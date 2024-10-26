@@ -34,9 +34,9 @@ export default function RecruiterPage() {
   }
 
   return (
-    <div className="container mx-auto py-8">
+    <div className="container mx-auto px-4 py-8">
       {/* Page Title */}
-      <h1 className="text-4xl font-bold mb-8 text-center">Recruiter Listings</h1>
+      <h1 className="text-2xl md:text-4xl font-bold mb-8 text-center">Recruiter Listings</h1>
 
       {/* List Recruiters */}
       <div className="space-y-4 w-full max-w-4xl mx-auto">
@@ -44,34 +44,34 @@ export default function RecruiterPage() {
           data.map((recruiter: any, index: number) => (
             <div
               key={index}
-              className="flex items-center justify-between p-4 bg-slate-600 rounded-md shadow-md"
+              className="flex flex-col sm:flex-row items-center justify-between p-4 bg-slate-600 rounded-md shadow-md space-y-4 sm:space-y-0"
             >
               {/* Recruiter Name */}
-              <div className="w-1/4 text-center">
+              <div className="w-full sm:w-1/4 text-center">
                 <strong>Recruiter Name:</strong> <br />
                 {recruiter.name ?? "N/A"}
               </div>
 
               {/* Email */}
-              <div className="w-1/4 text-center">
+              <div className="w-full sm:w-1/4 text-center">
                 <strong>Email:</strong> <br />
                 {recruiter.email ?? "N/A"}
               </div>
 
               {/* Company Name */}
-              <div className="w-1/4 text-center">
+              <div className="w-full sm:w-1/4 text-center">
                 <strong>Company Name:</strong> <br />
                 {recruiter.company_name ?? "N/A"}
               </div>
 
               {/* Button */}
-              <div className="w-1/4 text-center">
-              <button
-                onClick={() => handleApplyClick(recruiter.id)} // Pass recruiter ID
-                className="bg-blue-500 text-white px-6 py-2 rounded-md hover:bg-blue-600"
-              >
-                Apply
-              </button>
+              <div className="w-full sm:w-1/4 text-center">
+                <button
+                  onClick={() => handleApplyClick(recruiter.id)}
+                  className="bg-blue-500 text-white px-6 py-2 rounded-md hover:bg-blue-600 w-full sm:w-auto"
+                >
+                  Apply
+                </button>
               </div>
             </div>
           ))
