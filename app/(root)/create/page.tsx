@@ -49,8 +49,8 @@ const formSchema = z.object({
   description: z.string().min(20, {
     message: "Description must be at least 20 characters.",
   }),
-  budget: z.string().refine((val) => !isNaN(Number(val)) && Number(val) > 0, {
-    message: "Budget must be a positive number.",
+  location: z.string().min(3, {
+    message: "Location must be at least 3 characters.",
   }),
   deadline: z.date({
     required_error: "A deadline is required.",
@@ -88,7 +88,7 @@ export default function PostJobPage() {
     defaultValues: {
       title: "",
       description: "",
-      budget: "",
+      location: "",
       skills: [],
     },
   });
@@ -108,10 +108,10 @@ export default function PostJobPage() {
       const result = await createJob(
         values.title,
         values.description,
-        Number(values.budget),
+        values.location,
         values.deadline,
         data?.[0].user_id as number,
-        values.skills as string[]
+        values.skills
       );
       return result;
     },
@@ -194,14 +194,13 @@ export default function PostJobPage() {
               />
               <FormField
                 control={form.control}
-                name="budget"
+                name="location"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Location</FormLabel>
                     <FormControl>
-                      <Textarea
+                      <Input
                         placeholder="Enter Job Location"
-                        className="resize-none"
                         {...field}
                       />
                     </FormControl>

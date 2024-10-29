@@ -10,7 +10,7 @@ export default function RecruiterPage() {
   const router = useRouter();
 
   const handleApplyClick = (id: string) => {
-    router.push(`/recruiters/${id}`); // Navigate to the job details page with the recruiter's ID
+    router.push(`/jobs/${id}`); // Navigate to the job details page with the recruiter's ID
   };
   const { data, isLoading } = useQuery({
     queryKey: ["recruiters"],
@@ -67,7 +67,7 @@ export default function RecruiterPage() {
               {/* Button */}
               <div className="w-full sm:w-1/4 text-center">
                 <button
-                  onClick={() => handleApplyClick(recruiter.id)}
+                  onClick={() => handleApplyClick(recruiter.recruiter_id)}
                   className="bg-blue-500 text-white px-6 py-2 rounded-md hover:bg-blue-600 w-full sm:w-auto"
                 >
                   Apply

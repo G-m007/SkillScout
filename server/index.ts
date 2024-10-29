@@ -74,7 +74,7 @@ WHERE
 
 export async function getUserDetails(email: string) {
   const sql = neon(process.env.NEXT_PUBLIC_DATABASE_URL!);
-  const response = await sql`SELECT * FROM Users WHERE email = ${email};`;
+  const response = await sql`SELECT * FROM candidate WHERE email = ${email};`;
   return response;
 }
 
@@ -118,29 +118,6 @@ GROUP BY
     Users.user_id;`;
   console.log("User with skills:", response);
   return response;
-}
-
-export async function createJob(
-  title: string,
-  description: string,
-  budget: number,
-  deadline: Date,
-  clientId: number,
-  skills: string[]
-) {
-  const sql = neon(process.env.NEXT_PUBLIC_DATABASE_URL!);
-  const jobId = await sql`
-      INSERT INTO Jobs (title, description, budget, deadline, client_id, status, created_at)
-      VALUES (${title}, ${description}, ${budget}, ${deadline}, ${clientId}, 'open', CURRENT_TIMESTAMP)
-      RETURNING job_id;
-    `;
-  for (const skill of skills) {
-    await sql`
-      INSERT INTO SkillsRequired (job_id, skill_name)
-      VALUES (${jobId[0].job_id}, ${skill})
-    `;
-  }
-  return jobId;
 }
 
 export async function getAppliedJobs(userId: number) {
@@ -227,24 +204,67 @@ export async function getDetails() {
 
 }
 
-export async function getJobDetails() {
+export async function getJobDetails(id: string) {
+  try {
+    console.log('Received ID:', id.toString());
+
+    if (!id) {
+      console.log('No ID provided, returning empty result');
+      return [];
+    }
+
+    const recruiterId = parseInt(id);
+    if (isNaN(recruiterId)) {
+      console.log('Invalid ID format, returning empty result');
+      return [];
+    }
+
+    const sql = neon(process.env.NEXT_PUBLIC_DATABASE_URL!);
+    const response = await sql`
+      SELECT 
+        recruiter.company_name,
+        job.job_title,
+        job.location,
+        job.experience_required,
+        jobrequirement.proficiency_level_required
+      FROM 
+        recruiter
+      JOIN 
+        job ON recruiter.recruiter_id = job.recruiter_id
+      JOIN 
+        jobrequirement ON job.job_id = jobrequirement.job_id
+      WHERE 
+        recruiter.recruiter_id = ${recruiterId}
+    `;
+    
+    console.log('Database response:', response);
+    return response;
+  } catch (error) {
+    console.error('Error fetching job details:', error);
+    return [];  // Return empty array on error
+  }
+}
+
+
+export async function createJob(
+  job_title: string,
+  job_desc: string,
+  location: string,
+  deadline: Date,
+  clientId: number,
+  skills: string[]
+) {
   const sql = neon(process.env.NEXT_PUBLIC_DATABASE_URL!);
-  const response = await sql`
-  SELECT 
-  recruiters.company_name,
-  job.title AS job_title,
-  job.location,
-  job.experience_required,
-  jobrequirement.proficiency_level_required
-  FROM 
-    recruiters
-  JOIN 
-    job ON recruiters.id = job.recruiter_id
-  JOIN 
-    jobrequirement ON job.id = jobrequirement.job_id
-  WHERE 
-    recruiters.id = $1; 
-  `
-  console.log(response)
-  return response;
+  const jobId = await sql`
+      INSERT INTO Jobs (title, description, location, deadline, client_id, status, created_at)
+      VALUES (${job_title}, ${job_desc}, ${location}, ${deadline}, ${clientId}, 'open', CURRENT_TIMESTAMP)
+      RETURNING job_id;
+    `;
+  for (const skill of skills) {
+    await sql`
+      INSERT INTO SkillsRequired (job_id, skill_name)
+      VALUES (${jobId[0].job_id}, ${skill})
+    `;
+  }
+  return jobId;
 }
