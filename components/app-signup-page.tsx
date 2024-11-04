@@ -33,7 +33,7 @@ import { useSignUp } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { createUser } from "@/server";
+import { createNewUser } from "@/server";
 import { useToast } from "@/hooks/use-toast";
 const skillOptions = [
   { label: "Python", value: "python" },
@@ -53,7 +53,7 @@ const signUpSchema = z.object({
   lastName: z.string().min(2, "Last name must be at least 2 characters"),
   email: z.string().email("Invalid email address"),
   password: z.string().min(8, "Password must be at least 8 characters"),
-  userType: z.enum(["client", "freelancer"], {
+  userType: z.enum(["candidate", "recruiter"], {
     required_error: "Please select a user type",
   }),
   skills: z
@@ -136,12 +136,12 @@ export function SignUp() {
   };
   const mutation = useMutation({
     mutationFn: async () => {
-      const result = await createUser(
+      const result = await createNewUser(
         form.getValues("firstName"),
         form.getValues("lastName"),
         form.getValues("email"),
-        form.getValues("skills"),
-        form.getValues("userType")
+        form.getValues("userType") as "candidate" | "recruiter",
+        form.getValues("skills")
       );
     },
     onSuccess: () => {
@@ -263,8 +263,8 @@ export function SignUp() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="client">Client</SelectItem>
-                        <SelectItem value="freelancer">Freelancer</SelectItem>
+                        <SelectItem value="candidate">Candidate</SelectItem>
+                        <SelectItem value="recruiter">Recruiter</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />

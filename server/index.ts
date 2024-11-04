@@ -14,46 +14,6 @@ export async function getJobs() {
   return response;
 }
 
-export async function createUser(
-  firstName: string,
-  lastName: string,
-  email: string,
-  skills: string[],
-  jobRole: string
-) {
-  const sql = neon(process.env.NEXT_PUBLIC_DATABASE_URL!);
-  console.log("Inserting user:", firstName, lastName, email, skills, jobRole);
-
-  try {
-    const fullName = `${firstName} ${lastName}`;
-    const userResponse = await sql`
-      INSERT INTO Users (name, email, role, rating)
-      VALUES (${fullName}, ${email}, ${jobRole}, 0.0)
-      RETURNING user_id;
-    `;
-
-    console.log("User insertion response:", userResponse);
-
-    if (!userResponse || userResponse.length === 0) {
-      throw new Error("Failed to insert user");
-    }
-
-    const userId = userResponse[0].user_id;
-    for (const skill of skills) {
-      await sql`
-        INSERT INTO Skills (user_id, skill_name) 
-        VALUES (${userId}, ${skill})
-      `;
-    }
-
-    console.log("User and skills inserted successfully");
-    return { userId, fullName, email, jobRole, skills };
-  } catch (error) {
-    console.error("Error in createUser:", error);
-    throw error;
-  }
-}
-
 export async function getJobById(jobId: number) {
   const sql = neon(process.env.NEXT_PUBLIC_DATABASE_URL!);
   const response = await sql`SELECT 
@@ -75,6 +35,7 @@ WHERE
 export async function getUserDetails(email: string) {
   const sql = neon(process.env.NEXT_PUBLIC_DATABASE_URL!);
   const response = await sql`SELECT * FROM candidate WHERE email = ${email};`;
+  console.log("User details:", response);
   return response;
 }
 
@@ -120,23 +81,6 @@ GROUP BY
   return response;
 }
 
-export async function getAppliedJobs(userId: number) {
-  const sql = neon(process.env.NEXT_PUBLIC_DATABASE_URL!);
-  const response = await sql`SELECT 
-    j.job_id,
-    j.title,
-    j.description,
-    j.status AS job_status,
-    j.budget,
-    j.deadline,
-    b.bid_amount,
-    b.status AS bid_status
-FROM Jobs j
-JOIN Bids b ON j.job_id = b.job_id
-WHERE b.freelancer_id = ${userId};
-`;
-  return response;
-}
 
 export async function getUserPostedJobs(userId: number) {
   const sql = neon(process.env.NEXT_PUBLIC_DATABASE_URL!);
@@ -226,7 +170,8 @@ export async function getJobDetails(id: string) {
         job.job_title,
         job.location,
         job.experience_required,
-        jobrequirement.proficiency_level_required
+        jobrequirement.proficiency_level_required,
+        job.job_id
       FROM 
         recruiter
       JOIN 
@@ -267,4 +212,146 @@ export async function createJob(
     `;
   }
   return jobId;
+}
+
+export async function getAppliedJobs(userId: number) {
+  const sql = neon(process.env.NEXT_PUBLIC_DATABASE_URL!);
+  const response = await sql`
+    SELECT 
+      j.job_title,
+      j.location,
+      j.experience_required,
+      j.proficiencylevelreq AS proficiency_level_required,
+      a.application_date,
+      a.status AS application_status,
+      c.f_name AS candidate_first_name,
+      c.l_name AS candidate_last_name,
+      c.email AS candidate_email,
+      r.company_name AS recruiter_company_name,
+      r.email AS recruiter_email
+    FROM 
+        Application AS a
+    JOIN 
+        Job AS j ON a.job_id = j.job_id
+    JOIN 
+        Candidate AS c ON a.candidate_id = c.candidate_id
+    JOIN 
+        Recruiter AS r ON j.recruiter_id = r.recruiter_id
+    ORDER BY 
+        a.application_date DESC;
+
+  `;
+  console.log("Applied jobs:", response);
+  return response;
+}
+
+export async function createNewUser(
+  firstName: string,
+  lastName: string,
+  email: string,
+  userType: 'candidate' | 'recruiter',
+  skills?: string[]
+) {
+  const sql = neon(process.env.NEXT_PUBLIC_DATABASE_URL!);
+  
+  // Check if user exists in either table
+  const existingCandidate = await sql`
+    SELECT email FROM Candidate WHERE email = ${email}
+  `;
+  const existingRecruiter = await sql`
+    SELECT email FROM Recruiter WHERE email = ${email}
+  `;
+
+  if (existingCandidate.length > 0 || existingRecruiter.length > 0) {
+    return { error: "User already exists. Please sign in instead." };
+  }
+
+  console.log("Creating new user:", { firstName, lastName, email, userType, skills });
+
+  try {
+    if (userType === 'candidate') {
+      // Get the next candidate_id
+      const lastId = await sql`
+        SELECT MAX(candidate_id) as last_id FROM Candidate
+      `;
+      const nextId = (lastId[0]?.last_id || 0) + 1;
+
+      // Insert into Candidate table
+      const candidateResponse = await sql`
+        INSERT INTO Candidate (candidate_id, f_name, l_name, email)
+        VALUES (${nextId}, ${firstName}, ${lastName}, ${email})
+        RETURNING candidate_id;
+      `;
+
+      // If skills are provided, insert them
+      if (skills && skills.length > 0) {
+        for (const skill of skills) {
+          await sql`
+            INSERT INTO skill (candidate_id, skill_name)
+            VALUES (${nextId}, ${skill});
+          `;
+        }
+      }
+
+      console.log("Candidate created successfully:", candidateResponse);
+      return { userId: nextId, type: 'candidate' };
+
+    } else {
+      // Get the next recruiter_id
+      const lastId = await sql`
+        SELECT MAX(recruiter_id) as last_id FROM Recruiter
+      `;
+      const nextId = (lastId[0]?.last_id || 0) + 1;
+
+      // Insert into Recruiter table
+      const recruiterResponse = await sql`
+        INSERT INTO Recruiter (recruiter_id, f_name, l_name, email)
+        VALUES (${nextId}, ${firstName}, ${lastName}, ${email})
+        RETURNING recruiter_id;
+      `;
+
+      console.log("Recruiter created successfully:", recruiterResponse);
+      return { userId: nextId, type: 'recruiter' };
+    }
+
+  } catch (error) {
+    console.error("Error in createNewUser:", error);
+    throw error;
+  }
+}
+
+export async function createJobApplication(
+  jobId: number,
+  candidateId: number,
+  recruiterId: number
+) {
+  try {
+    const sql = neon(process.env.NEXT_PUBLIC_DATABASE_URL!);
+    const response = await sql`
+      INSERT INTO Application (
+        job_id,
+        candidate_id,
+        application_date,
+        status
+      )
+      VALUES (
+        ${jobId},
+        ${candidateId},
+        
+        CURRENT_TIMESTAMP,
+        'pending'
+      )
+      RETURNING application_id;
+    `;
+    return response;
+  } catch (error) {
+    console.error('Error creating job application:', error);
+    throw error;
+  }
+}
+export async function getAppliedJobDetails(candidateId: number) {
+  const sql = neon(process.env.NEXT_PUBLIC_DATABASE_URL!);
+  const response = await sql`SELECT * FROM Application WHERE candidate_id = ${candidateId}`;
+  console.log("Applied job details:", response);
+  return response;
 }
