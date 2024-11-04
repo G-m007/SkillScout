@@ -4,6 +4,9 @@ import { useQuery } from "@tanstack/react-query";
 import { getDetails } from "@/server";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Building2, User, Mail, ArrowRight, Briefcase } from "lucide-react";
 
 export default function RecruiterPage() {
   // Fetch recruiter data using react-query
@@ -24,59 +27,77 @@ export default function RecruiterPage() {
     },
   });
 
-  // Display loader while data is being fetched
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        <Loader2 className="animate-spin w-10 h-10" />
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      {/* Page Title */}
-      <h1 className="text-2xl md:text-4xl font-bold mb-8 text-center">Recruiter Listings</h1>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <div className="container mx-auto py-12 px-4 sm:px-6 lg:px-8">
+        <div className="mb-10">
+          <h1 className="text-4xl font-bold text-gray-900 dark:text-white">
+            Available Positions
+          </h1>
+          <p className="mt-2 text-gray-600 dark:text-gray-400">
+            Explore opportunities from top recruiters
+          </p>
+        </div>
 
-      {/* List Recruiters */}
-      <div className="space-y-4 w-full max-w-4xl mx-auto">
         {data && data.length > 0 ? (
-          data.map((recruiter: any, index: number) => (
-            <div
-              key={index}
-              className="flex flex-col sm:flex-row items-center justify-between p-4 bg-slate-600 rounded-md shadow-md space-y-4 sm:space-y-0"
-            >
-              {/* Recruiter Name */}
-              <div className="w-full sm:w-1/4 text-center">
-                <strong>Recruiter Name:</strong> <br />
-                {recruiter.name ?? "N/A"}
-              </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {data.map((recruiter: any, index: number) => (
+              <Card
+                key={index}
+                className="hover:shadow-lg transition-all duration-300 border-2 hover:border-primary/20"
+              >
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Building2 className="h-5 w-5 text-primary" />
+                    {recruiter.company_name ?? "N/A"}
+                  </CardTitle>
+                </CardHeader>
 
-              {/* Email */}
-              <div className="w-full sm:w-1/4 text-center">
-                <strong>Email:</strong> <br />
-                {recruiter.email ?? "N/A"}
-              </div>
+                <CardContent className="space-y-4">
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <User className="h-4 w-4" />
+                      <span className="text-sm">{recruiter.name ?? "N/A"}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Mail className="h-4 w-4" />
+                      <span className="text-sm">{recruiter.email ?? "N/A"}</span>
+                    </div>
+                  </div>
 
-              {/* Company Name */}
-              <div className="w-full sm:w-1/4 text-center">
-                <strong>Company Name:</strong> <br />
-                {recruiter.company_name ?? "N/A"}
-              </div>
-
-              {/* Button */}
-              <div className="w-full sm:w-1/4 text-center">
-                <button
-                  onClick={() => handleApplyClick(recruiter.recruiter_id)}
-                  className="bg-blue-500 text-white px-6 py-2 rounded-md hover:bg-blue-600 w-full sm:w-auto"
-                >
-                  Apply
-                </button>
-              </div>
-            </div>
-          ))
+                  <div className="pt-4 border-t">
+                    <Button 
+                      onClick={() => handleApplyClick(recruiter.recruiter_id)}
+                      className="w-full group"
+                    >
+                      View Positions
+                      <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         ) : (
-          <p className="text-center text-lg">No recruiters found.</p>
+          <div className="text-center py-16 bg-white dark:bg-gray-800 rounded-lg shadow">
+            <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Briefcase className="h-8 w-8 text-gray-400" />
+            </div>
+            <h3 className="text-xl font-semibold mb-2 dark:text-white">
+              No Recruiters Available
+            </h3>
+            <p className="text-muted-foreground max-w-sm mx-auto mb-6">
+              There are currently no recruiters listed. Please check back later.
+            </p>
+          </div>
         )}
       </div>
     </div>

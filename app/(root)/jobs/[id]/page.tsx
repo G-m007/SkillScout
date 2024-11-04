@@ -17,6 +17,8 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Button } from "@/components/ui/button"
 import { useAuth, useUser } from '@clerk/nextjs'
 import { toast } from '@/hooks/use-toast'
+import { Card, CardContent } from "@/components/ui/card"
+import { Building2, MapPin, Clock, Briefcase, GraduationCap } from "lucide-react"
 
 export default function JobApplicationPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -96,34 +98,45 @@ export default function JobApplicationPage() {
 
       {data && data.length > 0 ? (
         data.map((jobDetail, index) => (
-          <div key={index} className="space-y-4 bg-black-100 p-4 sm:p-6 rounded-md shadow-md mb-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="text-base sm:text-lg">
-                <strong>Company Name:</strong> {jobDetail.company_name}
+          <Card key={index} className="hover:shadow-lg transition-all duration-300 border-2 hover:border-primary/20 mb-4">
+            <CardContent className="pt-6">
+              <div className="space-y-4">
+                <div className="flex items-center space-x-2">
+                  <Building2 className="w-5 h-5 text-muted-foreground" />
+                  <span className="font-medium">{jobDetail.company_name}</span>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <Briefcase className="w-5 h-5 text-muted-foreground" />
+                  <span>{jobDetail.job_title}</span>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <MapPin className="w-5 h-5 text-muted-foreground" />
+                  <span>{jobDetail.location}</span>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Clock className="w-5 h-5 text-muted-foreground" />
+                  <span>{jobDetail.experience_required} years experience required</span>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <GraduationCap className="w-5 h-5 text-muted-foreground" />
+                  <span>{jobDetail.proficiency_level_required} proficiency required</span>
+                </div>
+
+                <div className="flex justify-end pt-4">
+                  <Button 
+                    onClick={() => handleApply(jobDetail)}
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    Apply Now
+                  </Button>
+                </div>
               </div>
-              <div className="text-base sm:text-lg">
-                <strong>Job Title:</strong> {jobDetail.job_title}
-              </div>
-              <div className="text-base sm:text-lg">
-                <strong>Location:</strong> {jobDetail.location}
-              </div>
-              <div className="text-base sm:text-lg">
-                <strong>Experience Required:</strong> {jobDetail.experience_required} years
-              </div>
-              <div className="text-base sm:text-lg">
-                <strong>Proficiency Level Required:</strong> {jobDetail.proficiency_level_required}
-              </div>
-            </div>
-            
-            <div className="mt-6 flex justify-end">
-              <Button 
-                onClick={() => handleApply(jobDetail)}
-                className="bg-blue-600 hover:bg-blue-700 text-white"
-              >
-                Apply Now
-              </Button>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         ))
       ) : (
         <p>No job details found for this recruiter.</p>
