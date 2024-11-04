@@ -351,7 +351,24 @@ export async function createJobApplication(
 }
 export async function getAppliedJobDetails(candidateId: number) {
   const sql = neon(process.env.NEXT_PUBLIC_DATABASE_URL!);
-  const response = await sql`SELECT * FROM Application WHERE candidate_id = ${candidateId}`;
+  const response = await sql`
+    SELECT 
+      a.application_id,
+      a.application_date,
+      a.status,
+      a.job_id,
+      a.candidate_id,
+      j.job_title,
+      j.location as job_location
+    FROM 
+      Application a
+    JOIN 
+      Job j ON a.job_id = j.job_id
+    WHERE 
+      a.candidate_id = ${candidateId}
+    ORDER BY 
+      a.application_date DESC
+  `;
   console.log("Applied job details:", response);
   return response;
 }
