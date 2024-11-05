@@ -20,6 +20,7 @@ export default function RecruiterPage() {
     queryFn: async () => {
       try {
         const response = await getDetails(); // Function to fetch recruiter details
+        console.log(response);
         return response;
       } catch (error) {
         console.error(error);
@@ -65,7 +66,7 @@ export default function RecruiterPage() {
                   <div className="space-y-3">
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <User className="h-4 w-4" />
-                      <span className="text-sm">{recruiter.name ?? "N/A"}</span>
+                      <span className="text-sm">{recruiter.f_name + " " + recruiter.l_name ?? "N/A"}</span>
                     </div>
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <Mail className="h-4 w-4" />

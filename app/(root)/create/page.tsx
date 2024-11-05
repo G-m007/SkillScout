@@ -39,15 +39,15 @@ import { SelectItem } from "@/components/ui/select";
 import { useUser } from "@clerk/nextjs";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Job, User } from "@/types";
-import { createJob, getJobs, getUserDetails } from "@/server";
+import { createJob, getJobs, getRecruiterDetails, getUserDetails } from "@/server";
 import { useToast } from "@/hooks/use-toast";
 
 const formSchema = z.object({
-  title: z.string().min(5, {
+  job_title: z.string().min(5, {
     message: "Title must be at least 5 characters.",
   }),
-  description: z.string().min(20, {
-    message: "Description must be at least 20 characters.",
+  experience_required: z.coerce.number().min(0, {
+    message: "Experience required must be a positive number.",
   }),
   location: z.string().min(3, {
     message: "Location must be at least 3 characters.",
@@ -86,31 +86,32 @@ export default function PostJobPage() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      title: "",
-      description: "",
+      job_title: "",
+      experience_required: 0,
       location: "",
       skills: [],
     },
   });
   const { toast } = useToast();
-  const { data, isLoading } = useQuery<User[]>({
+  const { data, isLoading } = useQuery<>({
     queryKey: ["user"],
     queryFn: async () => {
-      const result = await getUserDetails(
+      const result = await getRecruiterDetails(
         user?.emailAddresses[0].emailAddress as string
       );
-      return result as User[];
+      console.log(result);
+      return result;
     },
     enabled: !!user?.emailAddresses[0].emailAddress,
   });
   const mutation = useMutation({
     mutationFn: async (values: z.infer<typeof formSchema>) => {
       const result = await createJob(
-        values.title,
-        values.description,
+        values.job_title,
+        values.experience_required.toString(),
         values.location,
         values.deadline,
-        data?.[0].user_id as number,
+        data?.[0].recruiter_id as number,
         values.skills
       );
       return result;
@@ -142,20 +143,20 @@ export default function PostJobPage() {
     form.setValue("skills", selectedSkills);
   };
   return (
-    <div className="container mx-auto py-8">
-      <Card className="max-w-2xl mx-auto">
-        <CardHeader>
-          <CardTitle>Create Job Opening</CardTitle>
-          <CardDescription>
+    <div className="container mx-auto py-8 px-4 min-h-screen bg-gradient-to-b from-background to-muted">
+      <Card className="max-w-2xl mx-auto shadow-lg">
+        <CardHeader className="space-y-2 text-center">
+          <CardTitle className="text-3xl font-bold">Create Job Opening</CardTitle>
+          <CardDescription className="text-lg">
             Fill in the details for the new job opening
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-6">
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <FormField
                 control={form.control}
-                name="title"
+                name="job_title"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Job Title</FormLabel>
@@ -165,28 +166,26 @@ export default function PostJobPage() {
                         {...field}
                       />
                     </FormControl>
-                    <FormDescription>
-                      
-                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
               />
               <FormField
                 control={form.control}
-                name="description"
+                name="experience_required"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Job Description</FormLabel>
+                    <FormLabel>Experience Required (years)</FormLabel>
                     <FormControl>
-                      <Textarea
-                        placeholder="Enter Job Description"
-                        className="resize-none"
+                      <Input
+                        type="number"
+                        min="0"
+                        placeholder="Enter years of experience required"
                         {...field}
                       />
                     </FormControl>
                     <FormDescription>
-                      
+                      Enter the minimum years of experience required for this position
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -259,19 +258,20 @@ export default function PostJobPage() {
                 control={form.control}
                 name="skills"
                 render={() => (
-                  <FormItem>
-                    <FormLabel>Required Skills</FormLabel>
+                  <FormItem className="space-y-4">
+                    <FormLabel className="text-base font-semibold">Required Skills</FormLabel>
                     <FormControl>
-                      <div className="flex flex-wrap gap-2">
+                      <div className="flex flex-wrap gap-2 p-4 border rounded-lg bg-muted/50">
                         {availableSkills.map((skill) => (
                           <Badge
                             key={skill}
-                            variant={
-                              selectedSkills.includes(skill)
-                                ? "default"
-                                : "outline"
-                            }
-                            className="cursor-pointer"
+                            variant={selectedSkills.includes(skill) ? "default" : "outline"}
+                            className={cn(
+                              "cursor-pointer transition-all hover:scale-105",
+                              selectedSkills.includes(skill) 
+                                ? "bg-primary text-primary-foreground" 
+                                : "hover:bg-primary/10"
+                            )}
                             onClick={() => handleSkillSelect(skill)}
                           >
                             {skill}
@@ -279,15 +279,23 @@ export default function PostJobPage() {
                         ))}
                       </div>
                     </FormControl>
-                    <FormDescription>
-                     
-                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              <Button type="submit" disabled={mutation.isPending}>
-                {mutation.isPending ? "Posting..." : "Post Job"}
+              <Button 
+                type="submit" 
+                disabled={mutation.isPending}
+                className="w-full sm:w-auto transition-all hover:scale-105"
+              >
+                {mutation.isPending ? (
+                  <>
+                    <span className="animate-spin mr-2">⭕</span>
+                    Posting...
+                  </>
+                ) : (
+                  "Post Job"
+                )}
               </Button>
             </form>
           </Form>

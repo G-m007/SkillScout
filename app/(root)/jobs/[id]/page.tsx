@@ -121,10 +121,7 @@ export default function JobApplicationPage() {
                   <span>{jobDetail.experience_required} years experience required</span>
                 </div>
 
-                <div className="flex items-center space-x-2">
-                  <GraduationCap className="w-5 h-5 text-muted-foreground" />
-                  <span>{jobDetail.proficiency_level_required} proficiency required</span>
-                </div>
+                
 
                 <div className="flex justify-end pt-4">
                   <Button 

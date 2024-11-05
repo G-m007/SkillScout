@@ -34,18 +34,18 @@ export default function ResponsiveNavbar({ user }: { user: User }) {
   };
   console.log(user);
   return (
-    <nav className="bg-background shadow-md dark:shadow-gray-800">
+    <nav className="bg-background shadow-md dark:shadow-gray-800 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <motion.div
-            className="flex-shrink-0"
+            className="flex-shrink-0 min-w-0"
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5 }}
           >
             <Link href="/" className="flex items-center">
-              <span className="text-2xl font-bold text-primary hover:text-primary/80 transition-colors duration-300">
+              <span className="text-xl sm:text-2xl font-bold text-primary hover:text-primary/80 transition-colors duration-300 truncate">
                 SkillScout
               </span>
             </Link>
@@ -53,7 +53,7 @@ export default function ResponsiveNavbar({ user }: { user: User }) {
 
           {/* Desktop Menu */}
           <div className="hidden md:block">
-            <div className="ml-10 flex items-baseline space-x-4">
+            <div className="ml-4 lg:ml-10 flex items-baseline space-x-2 lg:space-x-4">
               <NavLink href="/about">Home</NavLink>
               <NavLink href="/about">Blogs</NavLink>
               <NavLink href="/about">About</NavLink>
@@ -64,7 +64,7 @@ export default function ResponsiveNavbar({ user }: { user: User }) {
           {/* Login Button and Dark Mode Toggle */}
 
           <motion.div
-            className="hidden md:flex items-center space-x-4"
+            className="hidden md:flex items-center space-x-2 lg:space-x-4"
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5 }}
@@ -122,7 +122,7 @@ export default function ResponsiveNavbar({ user }: { user: User }) {
           </motion.div>
 
           {/* Mobile menu button */}
-          <div className="md:hidden flex items-center">
+          <div className="md:hidden flex items-center space-x-2">
             {mounted && (
               <Toggle
                 aria-label="Toggle dark mode"
@@ -157,7 +157,7 @@ export default function ResponsiveNavbar({ user }: { user: User }) {
       <AnimatePresence>
         {isMenuOpen && (
           <motion.div
-            className="md:hidden"
+            className="md:hidden fixed w-full bg-background border-t border-gray-200 dark:border-gray-700"
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}

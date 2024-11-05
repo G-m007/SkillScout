@@ -56,11 +56,26 @@ const signUpSchema = z.object({
   userType: z.enum(["candidate", "recruiter"], {
     required_error: "Please select a user type",
   }),
-  skills: z
-    .array(z.string())
-    .min(1, "Please select at least one skill")
-    .optional()
-    .default([]),
+  skills: z.array(z.string()).default([]),
+  companyName: z.string().default(""),
+}).refine((data) => {
+  // Validate skills for candidates
+  if (data.userType === "candidate") {
+    return data.skills.length > 0;
+  }
+  return true;
+}, {
+  message: "Please select at least one skill",
+  path: ["skills"]
+}).refine((data) => {
+  // Validate company name for recruiters
+  if (data.userType === "recruiter") {
+    return data.companyName.length > 0;
+  }
+  return true;
+}, {
+  message: "Company name is required for recruiters",
+  path: ["companyName"]
 });
 
 type SignUpValues = z.infer<typeof signUpSchema>;
@@ -81,6 +96,7 @@ export function SignUp() {
       email: "",
       userType: undefined,
       skills: [],
+      companyName: "",
     },
   });
 
@@ -141,7 +157,8 @@ export function SignUp() {
         form.getValues("lastName"),
         form.getValues("email"),
         form.getValues("userType") as "candidate" | "recruiter",
-        form.getValues("skills")
+        form.getValues("userType") === "candidate" ? form.getValues("skills") : [],
+        form.getValues("userType") === "recruiter" ? form.getValues("companyName") : undefined
       );
     },
     onSuccess: () => {
@@ -271,55 +288,73 @@ export function SignUp() {
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name="skills"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Skills</FormLabel>
-                    <Select
-                      onValueChange={(value) => {
-                        if (!field.value.includes(value)) {
-                          field.onChange([...field.value, value]);
-                        }
-                      }}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select at least one skill" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {skillOptions.map((skill) => (
-                          <SelectItem key={skill.label} value={skill.label}>
-                            {skill.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              {form.watch("skills").map((skill) => (
-                <div
-                  key={skill}
-                  className="grid grid-cols-3 grid-rows-1 items-center gap-2"
-                >
-                  <div className="col-span-2">
-                    {skillOptions.find((s) => s.label === skill)?.label}
-                  </div>
-                  <X
-                    className="cursor-pointer"
-                    onClick={() => {
-                      form.setValue(
-                        "skills",
-                        form.getValues("skills").filter((s) => s !== skill)
-                      );
-                    }}
+              {form.watch("userType") === "candidate" ? (
+                <>
+                  <FormField
+                    control={form.control}
+                    name="skills"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Skills</FormLabel>
+                        <Select
+                          onValueChange={(value) => {
+                            if (!field.value.includes(value)) {
+                              field.onChange([...field.value, value]);
+                            }
+                          }}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select at least one skill" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {skillOptions.map((skill) => (
+                              <SelectItem key={skill.label} value={skill.label}>
+                                {skill.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
-                </div>
-              ))}
+                  {form.watch("skills").map((skill) => (
+                    <div
+                      key={skill}
+                      className="grid grid-cols-3 grid-rows-1 items-center gap-2"
+                    >
+                      <div className="col-span-2">
+                        {skillOptions.find((s) => s.label === skill)?.label}
+                      </div>
+                      <X
+                        className="cursor-pointer"
+                        onClick={() => {
+                          form.setValue(
+                            "skills",
+                            form.getValues("skills").filter((s) => s !== skill)
+                          );
+                        }}
+                      />
+                    </div>
+                  ))}
+                </>
+              ) : form.watch("userType") === "recruiter" && (
+                <FormField
+                  control={form.control}
+                  name="companyName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Company Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Enter your company name" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
               <Button
                 type="submit"
                 className="w-full"

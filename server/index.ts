@@ -39,23 +39,10 @@ export async function getUserDetails(email: string) {
   return response;
 }
 
-export async function createBid(
-  jobId: number,
-  freelancerId: number,
-  bidAmount: number
-) {
+export async function getRecruiterDetails(email: string) {
   const sql = neon(process.env.NEXT_PUBLIC_DATABASE_URL!);
-  const response =
-    await sql`INSERT INTO Bids (job_id, freelancer_id, bid_amount, status, created_at)
-VALUES (${jobId}, ${freelancerId}, ${bidAmount}, 'pending', CURRENT_TIMESTAMP);`;
-  return response;
-}
-
-export async function deleteBid(bidId: number) {
-  console.log("Deleting bid:", bidId);
-  const sql = neon(process.env.NEXT_PUBLIC_DATABASE_URL!);
-  const response = await sql`DELETE FROM Bids WHERE bid_id = ${bidId};`;
-  console.log("Bid deleted:", response);
+  const response = await sql`SELECT * FROM recruiter WHERE email = ${email};`;
+  console.log("User details:", response);
   return response;
 }
 
@@ -170,14 +157,11 @@ export async function getJobDetails(id: string) {
         job.job_title,
         job.location,
         job.experience_required,
-        jobrequirement.proficiency_level_required,
         job.job_id
       FROM 
         recruiter
       JOIN 
         job ON recruiter.recruiter_id = job.recruiter_id
-      JOIN 
-        jobrequirement ON job.job_id = jobrequirement.job_id
       WHERE 
         recruiter.recruiter_id = ${recruiterId}
     `;
@@ -193,25 +177,58 @@ export async function getJobDetails(id: string) {
 
 export async function createJob(
   job_title: string,
-  job_desc: string,
+  experience_required: string,
   location: string,
   deadline: Date,
-  clientId: number,
+  recruiterId: number,
   skills: string[]
 ) {
   const sql = neon(process.env.NEXT_PUBLIC_DATABASE_URL!);
-  const jobId = await sql`
-      INSERT INTO Jobs (title, description, location, deadline, client_id, status, created_at)
-      VALUES (${job_title}, ${job_desc}, ${location}, ${deadline}, ${clientId}, 'open', CURRENT_TIMESTAMP)
+  
+  try {
+    await sql`BEGIN`;
+
+    // Convert the deadline Date to a PostgreSQL date format
+    const formattedDeadline = deadline.toISOString().split('T')[0];
+
+    const jobResponse = await sql`
+      INSERT INTO Job (
+        job_title, 
+        experience_required, 
+        location, 
+        deadline, 
+        recruiter_id,
+        status,
+        created_at
+      )
+      VALUES (
+        ${job_title}, 
+        ${experience_required}, 
+        ${location}, 
+        ${formattedDeadline}::date, 
+        ${recruiterId}, 
+        'open',
+        CURRENT_TIMESTAMP
+      )
       RETURNING job_id;
     `;
-  for (const skill of skills) {
-    await sql`
-      INSERT INTO SkillsRequired (job_id, skill_name)
-      VALUES (${jobId[0].job_id}, ${skill})
-    `;
+
+    const jobId = jobResponse[0].job_id;
+
+    for (const skill of skills) {
+      await sql`
+        INSERT INTO requiredskill (job_id, skill_name)
+        VALUES (${jobId}, ${skill})
+      `;
+    }
+
+    await sql`COMMIT`;
+    return jobResponse;
+  } catch (error) {
+    await sql`ROLLBACK`;
+    console.error('Error creating job:', error);
+    throw error;
   }
-  return jobId;
 }
 
 export async function getAppliedJobs(userId: number) {
@@ -250,7 +267,8 @@ export async function createNewUser(
   lastName: string,
   email: string,
   userType: 'candidate' | 'recruiter',
-  skills?: string[]
+  skills?: string[],
+  companyName?: string
 ) {
   const sql = neon(process.env.NEXT_PUBLIC_DATABASE_URL!);
   
@@ -266,7 +284,7 @@ export async function createNewUser(
     return { error: "User already exists. Please sign in instead." };
   }
 
-  console.log("Creating new user:", { firstName, lastName, email, userType, skills });
+  console.log("Creating new user:", { firstName, lastName, email, userType, skills, companyName });
 
   try {
     if (userType === 'candidate') {
@@ -303,10 +321,10 @@ export async function createNewUser(
       `;
       const nextId = (lastId[0]?.last_id || 0) + 1;
 
-      // Insert into Recruiter table
+      // Insert into Recruiter table with company name
       const recruiterResponse = await sql`
-        INSERT INTO Recruiter (recruiter_id, f_name, l_name, email)
-        VALUES (${nextId}, ${firstName}, ${lastName}, ${email})
+        INSERT INTO Recruiter (recruiter_id, f_name, l_name, email, company_name)
+        VALUES (${nextId}, ${firstName}, ${lastName}, ${email}, ${companyName})
         RETURNING recruiter_id;
       `;
 
@@ -327,6 +345,19 @@ export async function createJobApplication(
 ) {
   try {
     const sql = neon(process.env.NEXT_PUBLIC_DATABASE_URL!);
+    
+    // Check if application already exists
+    const existingApplication = await sql`
+      SELECT application_id 
+      FROM Application 
+      WHERE job_id = ${jobId} AND candidate_id = ${candidateId}
+    `;
+
+    if (existingApplication.length > 0) {
+      return { error: "You have already applied to this job" };
+    }
+
+    // If no existing application, create new one
     const response = await sql`
       INSERT INTO Application (
         job_id,
@@ -337,7 +368,6 @@ export async function createJobApplication(
       VALUES (
         ${jobId},
         ${candidateId},
-        
         CURRENT_TIMESTAMP,
         'pending'
       )
