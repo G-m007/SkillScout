@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, X } from "lucide-react";
+import { Loader2, X, Upload } from "lucide-react";
 import React from "react";
 import { useUser } from "@clerk/nextjs";
 import { useQuery } from "@tanstack/react-query";
@@ -57,6 +57,11 @@ interface CandidateWithSkills {
   skills: string[];
 }
 
+interface ResumeUploadResponse {
+  success: boolean;
+  message: string;
+}
+
 export default function ProfilePage() {
   const { toast } = useToast();
   const [userData, setUserData] = useState<CandidateWithSkills>();
@@ -83,6 +88,8 @@ export default function ProfilePage() {
     enabled: !!data?.[0].candidate_id,
   });
   const queryClient = useQueryClient();
+  const [isUploading, setIsUploading] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const updateUserMutation = useMutation({
     mutationFn: updateCandidateDetails,
@@ -138,6 +145,57 @@ export default function ProfilePage() {
     console.log("Updating profile:", userData);
     setIsEditing(false);
   };
+
+  const uploadResumeMutation = useMutation({
+    mutationFn: async (formData: FormData): Promise<ResumeUploadResponse> => {
+      const response = await fetch('/api/upload-resume', {
+        method: 'POST',
+        body: formData,
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Resume uploaded successfully",
+        variant: "default",
+      });
+      setSelectedFile(null);
+    },
+    onError: (error) => {
+      toast({
+        title: "Failed to upload resume",
+        description: "Please try again later",
+        variant: "destructive",
+      });
+      console.error("Error uploading resume:", error);
+    },
+  });
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        toast({
+          title: "File too large",
+          description: "Please upload a file smaller than 5MB",
+          variant: "destructive",
+        });
+        return;
+      }
+      setSelectedFile(file);
+    }
+  };
+
+  const handleUpload = async () => {
+    if (!selectedFile || !userData) return;
+
+    const formData = new FormData();
+    formData.append('resume', selectedFile);
+    formData.append('candidateId', userData.candidate_id.toString());
+
+    uploadResumeMutation.mutate(formData);
+  };
+
   if (isLoading || userdataLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -206,6 +264,38 @@ export default function ProfilePage() {
                       Add Skill
                     </Button>
                   </div>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label>Resume Upload</Label>
+                <div className="flex items-center gap-4">
+                  <Input
+                    type="file"
+                    accept=".pdf,.doc,.docx"
+                    onChange={handleFileChange}
+                    className="flex-1"
+                    disabled={!isEditing || isUploading}
+                  />
+                  {selectedFile && (
+                    <Button
+                      type="button"
+                      onClick={handleUpload}
+                      disabled={!isEditing || isUploading}
+                      className="flex items-center gap-2"
+                    >
+                      {isUploading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Upload className="h-4 w-4" />
+                      )}
+                      Upload
+                    </Button>
+                  )}
+                </div>
+                {selectedFile && (
+                  <p className="text-sm text-muted-foreground">
+                    Selected file: {selectedFile.name}
+                  </p>
                 )}
               </div>
             </div>

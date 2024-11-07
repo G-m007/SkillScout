@@ -1,11 +1,13 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { getJobApplicationsByJobId } from '@/server';
+import { getJobApplicationsByJobId, getResumeByCandidate } from '@/server';
 import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Star, MapPin, Briefcase, User, Calendar, Hash, Mail } from 'lucide-react';
+import { ArrowLeft, Star, MapPin, Briefcase, User, Calendar, Hash, Mail, FileText, Download } from 'lucide-react';
+import { useToast } from "@/hooks/use-toast";
+import { Toast } from "@/components/ui/toast"
 
 // Add animation variants
 const containerVariants = {
@@ -49,17 +51,78 @@ interface Application {
   job_title: string;
   location: string;
   experience_required: number;
+  resume?: {
+    resume_id: number;
+    file_name: string;
+    file_type: string;
+    file_data: Buffer;
+    uploaded_at: Date;
+  };
 }
 
 export default function ApplicationDetailsPage() {
   const { id, idd } = useParams();
   const router = useRouter();
+  const { toast } = useToast();
 
   const { data: applicationData, isLoading } = useQuery({
     queryKey: ['getJobApplicationsByJobId', id, idd],
     queryFn: () => getJobApplicationsByJobId(Number(id)),
     enabled: !!id,
   });
+
+  const { data: resumeData } = useQuery({
+    queryKey: ['getResumeByCandidate', idd],
+    queryFn: () => getResumeByCandidate(Number(idd)),
+    enabled: !!idd,
+  });
+
+  const handleDownloadResume = () => {
+    if (resumeData?.file_data) {
+      try {
+        // Convert base64 to binary
+        const binaryString = window.atob(resumeData.file_data);
+        const len = binaryString.length;
+        const bytes = new Uint8Array(len);
+        
+        for (let i = 0; i < len; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+
+        // Create blob with the correct MIME type
+        const blob = new Blob([bytes.buffer], { 
+          type: resumeData.file_type || 'application/pdf' 
+        });
+
+        // Create download link
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = resumeData.file_name || 'resume.pdf';
+        
+        // Trigger download
+        document.body.appendChild(a);
+        a.click();
+        
+        // Cleanup
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+
+        toast({
+          title: "Resume downloaded successfully",
+          variant: "default",
+        });
+      } catch (error) {
+        console.error('Error downloading resume:', error);
+        toast({
+          title: "Failed to download resume",
+          description: "Please try again later",
+          variant: "destructive",
+        });
+      }
+    }
+  };
 
   if (isLoading) {
     return (
@@ -218,6 +281,42 @@ export default function ApplicationDetailsPage() {
                 </div>
               </div>
             </motion.div>
+
+            {/* Resume Card */}
+            {resumeData && (
+              <motion.div 
+                variants={cardVariants}
+                whileHover={{ y: -5 }}
+                className="bg-gray-900 rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow border border-gray-800"
+              >
+                <div className="flex items-center gap-2 mb-4">
+                  <FileText className="w-5 h-5 text-blue-400" />
+                  <h2 className="text-xl font-semibold text-white">Resume</h2>
+                </div>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-gray-400 text-sm">File Name</span>
+                      <p className="text-white font-medium">{resumeData.file_name}</p>
+                    </div>
+                    <Button
+                      onClick={handleDownloadResume}
+                      variant="outline"
+                      className="flex items-center gap-2 hover:gap-3 transition-all text-white border-gray-700 hover:bg-gray-800"
+                    >
+                      <Download className="w-4 h-4" />
+                      Download
+                    </Button>
+                  </div>
+                  <div>
+                    <span className="text-gray-400 text-sm">Uploaded</span>
+                    <p className="text-white font-medium">
+                      {new Date(resumeData.uploaded_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
+            )}
           </div>
         )}
       </div>

@@ -268,7 +268,10 @@ export async function createNewUser(
   email: string,
   userType: 'candidate' | 'recruiter',
   skills?: string[],
-  companyName?: string
+  companyName?: string,
+  phoneNumber?: string,
+  dateOfBirth?: string,
+  location?: string
 ) {
   const sql = neon(process.env.NEXT_PUBLIC_DATABASE_URL!);
   
@@ -287,6 +290,8 @@ export async function createNewUser(
   console.log("Creating new user:", { firstName, lastName, email, userType, skills, companyName });
 
   try {
+    await sql`BEGIN`;
+
     if (userType === 'candidate') {
       // Get the next candidate_id
       const lastId = await sql`
@@ -296,8 +301,24 @@ export async function createNewUser(
 
       // Insert into Candidate table
       const candidateResponse = await sql`
-        INSERT INTO Candidate (candidate_id, f_name, l_name, email)
-        VALUES (${nextId}, ${firstName}, ${lastName}, ${email})
+        INSERT INTO Candidate (
+          candidate_id,
+          f_name,
+          l_name,
+          email,
+          phone_number,
+          date_of_birth,
+          location
+        )
+        VALUES (
+          ${nextId},
+          ${firstName},
+          ${lastName},
+          ${email},
+          ${phoneNumber},
+          ${dateOfBirth}::date,
+          ${location}
+        )
         RETURNING candidate_id;
       `;
 
@@ -333,6 +354,7 @@ export async function createNewUser(
     }
 
   } catch (error) {
+    await sql`ROLLBACK`;
     console.error("Error in createNewUser:", error);
     throw error;
   }
@@ -455,6 +477,9 @@ export async function getCandidateWithSkills(candidateId: number) {
       c.f_name,
       c.l_name,
       c.email,
+      c.phone_number,
+      c.date_of_birth,
+      c.location,
       COALESCE(ARRAY_AGG(s.skill_name), '{}') AS skills
     FROM 
       Candidate c
@@ -463,7 +488,7 @@ export async function getCandidateWithSkills(candidateId: number) {
     WHERE 
       c.candidate_id = ${candidateId}
     GROUP BY 
-      c.candidate_id;
+      c.candidate_id, c.f_name, c.l_name, c.email, c.phone_number, c.date_of_birth, c.location;
   `;
   return response;
 }
@@ -473,17 +498,22 @@ export async function updateCandidateDetails({
   candidateId,
   firstName,
   lastName,
+  phone_number,
+  date_of_birth,
+  location,
   skills,
 }: {
   candidateId: number;
   firstName: string;
   lastName: string;
+  phone_number: string;
+  date_of_birth: string;
+  location: string;
   skills: string[];
 }) {
   const sql = neon(process.env.NEXT_PUBLIC_DATABASE_URL!);
   
   try {
-    // Start transaction
     await sql`BEGIN`;
 
     // Update candidate details
@@ -491,11 +521,14 @@ export async function updateCandidateDetails({
       UPDATE Candidate
       SET 
         f_name = ${firstName},
-        l_name = ${lastName}
+        l_name = ${lastName},
+        phone_number = ${phone_number},
+        date_of_birth = ${date_of_birth}::date,
+        location = ${location}
       WHERE candidate_id = ${candidateId};
     `;
 
-    // Get existing skills
+    // Existing skills update logic...
     const existingSkills = await sql`
       SELECT skill_name 
       FROM Skill 
@@ -532,6 +565,78 @@ export async function updateCandidateDetails({
   } catch (error) {
     await sql`ROLLBACK`;
     console.error("Error updating candidate details:", error);
+    throw error;
+  }
+}
+
+// Add this function to handle resume uploads
+export async function uploadResume(
+  candidateId: number,
+  fileBuffer: Buffer,
+  fileName: string,
+  fileType: string
+) {
+  const sql = neon(process.env.NEXT_PUBLIC_DATABASE_URL!);
+  
+  try {
+    await sql`BEGIN`;
+
+    // Convert Buffer to base64 string
+    const base64Data = fileBuffer.toString('base64');
+
+    const response = await sql`
+      INSERT INTO Resume (
+        candidate_id,
+        file_name,
+        file_type,
+        file_data,
+        uploaded_at
+      )
+      VALUES (
+        ${candidateId},
+        ${fileName},
+        ${fileType},
+        decode(${base64Data}, 'base64'),
+        CURRENT_TIMESTAMP
+      )
+      ON CONFLICT (candidate_id) 
+      DO UPDATE SET
+        file_name = EXCLUDED.file_name,
+        file_type = EXCLUDED.file_type,
+        file_data = decode(${base64Data}, 'base64'),
+        uploaded_at = CURRENT_TIMESTAMP
+      RETURNING resume_id;
+    `;
+
+    await sql`COMMIT`;
+    return { success: true, resumeId: response[0].resume_id };
+
+  } catch (error) {
+    await sql`ROLLBACK`;
+    console.error("Error uploading resume:", error);
+    throw error;
+  }
+}
+
+// Add this function to get resume details
+export async function getResumeByCandidate(candidateId: number) {
+  const sql = neon(process.env.NEXT_PUBLIC_DATABASE_URL!);
+  try {
+    const response = await sql`
+      SELECT 
+        resume_id,
+        file_name,
+        file_type,
+        encode(file_data, 'base64') as file_data,
+        uploaded_at
+      FROM 
+        Resume
+      WHERE 
+        candidate_id = ${candidateId}
+    `;
+    return response[0];
+  } catch (error) {
+    console.error("Error fetching resume:", error);
     throw error;
   }
 }

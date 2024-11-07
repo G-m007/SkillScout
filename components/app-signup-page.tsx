@@ -56,26 +56,22 @@ const signUpSchema = z.object({
   userType: z.enum(["candidate", "recruiter"], {
     required_error: "Please select a user type",
   }),
+  phoneNumber: z.string().min(10, "Phone number must be at least 10 digits").optional(),
+  dateOfBirth: z.string().optional(),
+  location: z.string().min(2, "Location must be at least 2 characters").optional(),
   skills: z.array(z.string()).default([]),
   companyName: z.string().default(""),
 }).refine((data) => {
-  // Validate skills for candidates
   if (data.userType === "candidate") {
-    return data.skills.length > 0;
+    return data.skills.length > 0 && 
+           data.phoneNumber && 
+           data.dateOfBirth && 
+           data.location;
   }
   return true;
 }, {
-  message: "Please select at least one skill",
+  message: "Please fill in all required fields",
   path: ["skills"]
-}).refine((data) => {
-  // Validate company name for recruiters
-  if (data.userType === "recruiter") {
-    return data.companyName.length > 0;
-  }
-  return true;
-}, {
-  message: "Company name is required for recruiters",
-  path: ["companyName"]
 });
 
 type SignUpValues = z.infer<typeof signUpSchema>;
@@ -95,6 +91,9 @@ export function SignUp() {
       password: "",
       email: "",
       userType: undefined,
+      phoneNumber: "",
+      dateOfBirth: "",
+      location: "",
       skills: [],
       companyName: "",
     },
@@ -152,27 +151,34 @@ export function SignUp() {
   };
   const mutation = useMutation({
     mutationFn: async () => {
+      const formData = form.getValues();
       const result = await createNewUser(
-        form.getValues("firstName"),
-        form.getValues("lastName"),
-        form.getValues("email"),
-        form.getValues("userType") as "candidate" | "recruiter",
-        form.getValues("userType") === "candidate" ? form.getValues("skills") : [],
-        form.getValues("userType") === "recruiter" ? form.getValues("companyName") : undefined
+        formData.firstName,
+        formData.lastName,
+        formData.email,
+        formData.userType,
+        formData.userType === "candidate" ? formData.skills : [],
+        formData.userType === "recruiter" ? formData.companyName : undefined,
+        formData.phoneNumber,
+        formData.dateOfBirth,
+        formData.location
       );
+      return result;
     },
     onSuccess: () => {
       toast({
         title: "Success",
         description: "User created successfully",
       });
+      onSubmit();
     },
-    onError: (err: any) => {
+    onError: (error) => {
       toast({
         title: "Error",
         description: "Failed to create user",
         variant: "destructive",
       });
+      console.error("Error creating user:", error);
     },
   });
   if (verifying) {
@@ -288,14 +294,66 @@ export function SignUp() {
                   </FormItem>
                 )}
               />
-              {form.watch("userType") === "candidate" ? (
+              {form.watch("userType") === "candidate" && (
                 <>
+                  <FormField
+                    control={form.control}
+                    name="phoneNumber"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Phone Number*</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="tel" 
+                            placeholder="Enter your phone number" 
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="dateOfBirth"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Date of Birth*</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="date" 
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="location"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Location*</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="Enter your location" 
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
                   <FormField
                     control={form.control}
                     name="skills"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Skills</FormLabel>
+                        <FormLabel>Skills*</FormLabel>
                         <Select
                           onValueChange={(value) => {
                             if (!field.value.includes(value)) {
@@ -310,43 +368,44 @@ export function SignUp() {
                           </FormControl>
                           <SelectContent>
                             {skillOptions.map((skill) => (
-                              <SelectItem key={skill.label} value={skill.label}>
+                              <SelectItem key={skill.value} value={skill.label}>
                                 {skill.label}
                               </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
+                        <div className="mt-2">
+                          {field.value.map((skill) => (
+                            <div
+                              key={skill}
+                              className="inline-flex items-center gap-2 bg-secondary rounded-md px-2 py-1 mr-2 mb-2"
+                            >
+                              <span>{skill}</span>
+                              <X
+                                className="h-4 w-4 cursor-pointer"
+                                onClick={() => {
+                                  field.onChange(
+                                    field.value.filter((s) => s !== skill)
+                                  );
+                                }}
+                              />
+                            </div>
+                          ))}
+                        </div>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  {form.watch("skills").map((skill) => (
-                    <div
-                      key={skill}
-                      className="grid grid-cols-3 grid-rows-1 items-center gap-2"
-                    >
-                      <div className="col-span-2">
-                        {skillOptions.find((s) => s.label === skill)?.label}
-                      </div>
-                      <X
-                        className="cursor-pointer"
-                        onClick={() => {
-                          form.setValue(
-                            "skills",
-                            form.getValues("skills").filter((s) => s !== skill)
-                          );
-                        }}
-                      />
-                    </div>
-                  ))}
                 </>
-              ) : form.watch("userType") === "recruiter" && (
+              )}
+
+              {form.watch("userType") === "recruiter" && (
                 <FormField
                   control={form.control}
                   name="companyName"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Company Name</FormLabel>
+                      <FormLabel>Company Name*</FormLabel>
                       <FormControl>
                         <Input placeholder="Enter your company name" {...field} />
                       </FormControl>
@@ -355,6 +414,7 @@ export function SignUp() {
                   )}
                 />
               )}
+
               <Button
                 type="submit"
                 className="w-full"
@@ -371,7 +431,7 @@ export function SignUp() {
             href="/sign-in"
             className="text-sm text-muted-foreground hover:text-primary transition-colors"
           >
-            Already have an account? Go to Sign In
+            Already have an account? Sign in
           </Link>
         </CardFooter>
       </Card>
