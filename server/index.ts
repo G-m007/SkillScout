@@ -581,7 +581,7 @@ export async function uploadResume(
   try {
     await sql`BEGIN`;
 
-    // Convert Buffer to base64 string
+    
     const base64Data = fileBuffer.toString('base64');
 
     const response = await sql`
