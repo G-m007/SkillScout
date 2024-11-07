@@ -7,9 +7,14 @@ const isProtectedRoute = createRouteMatcher([
   "/profile(.*)",
 ]);
 
-export default clerkMiddleware((auth, req) => {
+export default clerkMiddleware(async (auth, req) => {
   if (isProtectedRoute(req)) {
-    auth().protect();
+    const authObject = await auth();
+    // Check if the user is authenticated
+    if (!authObject.userId) {
+      // Handle unauthenticated access, e.g., throw an error or redirect
+      throw new Error("User is not authenticated");
+    }
   }
 });
 
