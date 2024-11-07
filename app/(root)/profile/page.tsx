@@ -24,10 +24,8 @@ import { Loader2, X } from "lucide-react";
 import React from "react";
 import { useUser } from "@clerk/nextjs";
 import { useQuery } from "@tanstack/react-query";
-import { User, UserWithSkills } from "@/types";
-import { getUserDetails, getUserWithSkills } from "@/server";
+import { getUserDetails, getCandidateWithSkills, updateCandidateDetails } from "@/server";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { updateUserDetails } from "@/server";
 import { useToast } from "@/hooks/use-toast";
 
 // Mock available skills (replace with actual skill data in your app)
@@ -49,9 +47,19 @@ const availableSkills = [
   "React Native",
   "Backend Development",
 ];
+
+// Update the interface to match candidate structure
+interface CandidateWithSkills {
+  candidate_id: number;
+  f_name: string;
+  l_name: string;
+  email: string;
+  skills: string[];
+}
+
 export default function ProfilePage() {
   const { toast } = useToast();
-  const [userData, setUserData] = useState<UserWithSkills>();
+  const [userData, setUserData] = useState<CandidateWithSkills>();
   const [isEditing, setIsEditing] = useState(false);
   const [selectedSkill, setSelectedSkill] = useState("");
   const { user } = useUser();
@@ -61,24 +69,23 @@ export default function ProfilePage() {
       const result = await getUserDetails(
         user?.emailAddresses[0].emailAddress as string
       );
-      return result as User[];
+      return result;
     },
     enabled: !!user?.emailAddresses[0].emailAddress,
   });
   const { data: userdata, isLoading: userdataLoading } = useQuery({
     queryKey: ["userdata"],
     queryFn: async () => {
-      const result = await getUserWithSkills(data?.[0].user_id as number);
-      const res = result as UserWithSkills[];
-      setUserData(res[0]);
-      return res[0];
+      const result = await getCandidateWithSkills(data?.[0].candidate_id);
+      setUserData(result[0]);
+      return result[0];
     },
     enabled: !!data?.[0].candidate_id,
   });
   const queryClient = useQueryClient();
 
   const updateUserMutation = useMutation({
-    mutationFn: updateUserDetails,
+    mutationFn: updateCandidateDetails,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["userdata"] });
       toast({
@@ -122,8 +129,9 @@ export default function ProfilePage() {
     e.preventDefault();
     if (userData) {
       updateUserMutation.mutate({
-        userId: userData.user_id,
-        name: userData.name,
+        candidateId: userData.candidate_id,
+        firstName: userData.f_name,
+        lastName: userData.l_name,
         skills: userData.skills,
       });
     }
@@ -143,7 +151,7 @@ export default function ProfilePage() {
         <CardHeader>
           <CardTitle>Your Profile</CardTitle>
           <CardDescription>
-            View and edit your profile information
+            View and edit your profile information (ID: {userData?.candidate_id})
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -154,7 +162,7 @@ export default function ProfilePage() {
                 <Input
                   id="name"
                   name="name"
-                  value={userData?.name}
+                  value={userData?.f_name}
                   onChange={handleInputChange}
                   disabled={!isEditing}
                 />

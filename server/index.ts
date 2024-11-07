@@ -445,3 +445,93 @@ export async function getJobDetailsById(recruiterId: number) {
   console.log(response)
   return response;
 }
+
+// Add new function to get candidate with skills
+export async function getCandidateWithSkills(candidateId: number) {
+  const sql = neon(process.env.NEXT_PUBLIC_DATABASE_URL!);
+  const response = await sql`
+    SELECT 
+      c.candidate_id,
+      c.f_name,
+      c.l_name,
+      c.email,
+      COALESCE(ARRAY_AGG(s.skill_name), '{}') AS skills
+    FROM 
+      Candidate c
+    LEFT JOIN 
+      Skill s ON c.candidate_id = s.candidate_id
+    WHERE 
+      c.candidate_id = ${candidateId}
+    GROUP BY 
+      c.candidate_id;
+  `;
+  return response;
+}
+
+// Update the function to work with candidate skills
+export async function updateCandidateDetails({
+  candidateId,
+  firstName,
+  lastName,
+  skills,
+}: {
+  candidateId: number;
+  firstName: string;
+  lastName: string;
+  skills: string[];
+}) {
+  const sql = neon(process.env.NEXT_PUBLIC_DATABASE_URL!);
+  
+  try {
+    // Start transaction
+    await sql`BEGIN`;
+
+    // Update candidate details
+    await sql`
+      UPDATE Candidate
+      SET 
+        f_name = ${firstName},
+        l_name = ${lastName}
+      WHERE candidate_id = ${candidateId};
+    `;
+
+    // Get existing skills
+    const existingSkills = await sql`
+      SELECT skill_name 
+      FROM Skill 
+      WHERE candidate_id = ${candidateId};
+    `;
+    const existingSkillNames = existingSkills.map(s => s.skill_name);
+
+    // Find new skills to add
+    const skillsToAdd = skills.filter(skill => !existingSkillNames.includes(skill));
+
+    // Find skills to remove
+    const skillsToRemove = existingSkillNames.filter(skill => !skills.includes(skill));
+
+    // Remove skills that are no longer needed
+    if (skillsToRemove.length > 0) {
+      await sql`
+        DELETE FROM Skill
+        WHERE candidate_id = ${candidateId}
+        AND skill_name = ANY(${skillsToRemove}::text[]);
+      `;
+    }
+
+    // Add new skills
+    for (const skill of skillsToAdd) {
+      await sql`
+        INSERT INTO Skill (candidate_id, skill_name)
+        VALUES (${candidateId}, ${skill});
+      `;
+    }
+
+    await sql`COMMIT`;
+    return { success: true };
+
+  } catch (error) {
+    await sql`ROLLBACK`;
+    console.error("Error updating candidate details:", error);
+    throw error;
+  }
+}

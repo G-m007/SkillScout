@@ -178,11 +178,7 @@ export default function ResponsiveNavbar({ user }: { user: User }) {
               </NavLink>
             </div>
             <div className="pt-4 pb-3 border-t border-gray-200 dark:border-gray-700">
-              <div className="px-2">
-                <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground transition-colors duration-300">
-                  Sign In
-                </Button>
-              </div>
+              
             </div>
           </motion.div>
         )}
