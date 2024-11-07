@@ -1,16 +1,25 @@
+
 "use client";
 
-import { useRouter } from "next/navigation"; // Use next/navigation instead of next/router
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Inbox } from "lucide-react";
+import { useEffect, useState } from "react";
+import { getRecruiterDetails } from "@/server";
+import { useQuery } from "@tanstack/react-query";
+import { useUser } from "@clerk/nextjs";
 
 export default function RecruiterPage() {
+  const [recruiterId, setRecruiterId] = useState<number | null>(null);
+  const {user} = useUser();
   const router = useRouter();
-
-  const handleRecruiterClick = () => {
-    router.push("/create");
-  };
-
+  const {data, isLoading} = useQuery({
+    queryKey: ['getRecruiterDetails', user?.emailAddresses[0].emailAddress],
+    queryFn: () => getRecruiterDetails(user?.emailAddresses[0].emailAddress!),
+  });
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
@@ -23,7 +32,7 @@ export default function RecruiterPage() {
           {/* Action Buttons */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
             <Button 
-              onClick={handleRecruiterClick} 
+              onClick={() => router.push("/create")} 
               variant="outline"
               className="w-full py-6 text-lg hover:scale-105 transition-transform flex items-center justify-center gap-2"
             >
@@ -31,7 +40,7 @@ export default function RecruiterPage() {
               Create a New Job
             </Button>
             <Button 
-              onClick={() => router.push("/applications")} 
+              onClick={() => router.push(`/applications?recruiterId=${data?.[0].recruiter_id}`)}
               variant="outline"
               className="w-full py-6 text-lg hover:scale-105 transition-transform flex items-center justify-center gap-2"
             >

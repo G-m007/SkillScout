@@ -402,3 +402,46 @@ export async function getAppliedJobDetails(candidateId: number) {
   console.log("Applied job details:", response);
   return response;
 }
+
+
+export async function getJobApplicationsByJobId(jobId: number) {
+  const sql = neon(process.env.NEXT_PUBLIC_DATABASE_URL!);
+  try {
+    const response = await sql`
+      SELECT 
+        a.application_id,
+        a.application_date,
+        a.status,
+        a.job_id,
+        a.candidate_id,
+        c.f_name as candidate_first_name,
+        c.l_name as candidate_last_name,
+        c.email as candidate_email,
+        j.job_title,
+        j.location,
+        j.experience_required
+      FROM 
+        Application a
+      JOIN 
+        Candidate c ON a.candidate_id = c.candidate_id
+      JOIN 
+        Job j ON a.job_id = j.job_id
+      WHERE 
+        a.job_id = ${jobId}
+      ORDER BY 
+        a.application_date DESC
+    `;
+    console.log(response);
+    return response;
+  } catch (error) {
+    console.error('Error fetching job applications:', error);
+    throw error;
+  }
+}
+
+export async function getJobDetailsById(recruiterId: number) {
+  const sql = neon(process.env.NEXT_PUBLIC_DATABASE_URL!);
+  const response = await sql`SELECT * FROM JOB WHERE RECRUITER_ID = ${recruiterId}`;
+  console.log(response)
+  return response;
+}

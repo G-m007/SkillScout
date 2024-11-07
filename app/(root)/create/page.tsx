@@ -93,7 +93,7 @@ export default function PostJobPage() {
     },
   });
   const { toast } = useToast();
-  const { data, isLoading } = useQuery<>({
+  const { data, isLoading } = useQuery({
     queryKey: ["user"],
     queryFn: async () => {
       const result = await getRecruiterDetails(

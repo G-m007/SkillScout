@@ -73,7 +73,7 @@ export default function ProfilePage() {
       setUserData(res[0]);
       return res[0];
     },
-    enabled: !!data?.[0].user_id,
+    enabled: !!data?.[0].candidate_id,
   });
   const queryClient = useQueryClient();
 
