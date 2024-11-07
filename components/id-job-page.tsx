@@ -20,7 +20,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Bid, Job, User } from "@/types";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { createBid, getJobById, getJobs } from "@/server";
+import { getJobById, getJobs } from "@/server";
 import { Loader2, Trash2 } from "lucide-react";
 import {
   Table,
@@ -51,8 +51,6 @@ export default function JobDetailsPage({
   userDetails: User[];
 }) {
   const [isAlertOpen, setIsAlertOpen] = useState(false);
-  const [isBidModalOpen, setIsBidModalOpen] = useState(false);
-  const [bidAmount, setBidAmount] = useState("");
   const { toast } = useToast();
   const [deletingBidId, setDeletingBidId] = useState<number | null>(null);
   const handleDeleteBid = (bidId: number) => {
@@ -67,35 +65,13 @@ export default function JobDetailsPage({
       setDeletingBidId(null);
     }
   };
-  const mutation = useMutation({
-    mutationFn: async () => {
-      const result = await createBid(
-        job.job_id,
-        userDetails[0].user_id,
-        Number(bidAmount)
-      );
-      return result;
-    },
-    onSuccess: () => {
-      toast({
-        title: "Success",
-        description: "Bid submitted successfully",
-      });
-    },
-    onError: (err: any) => {
-      toast({
-        title: "Error",
-        description: `Failed to submit bid`,
-        variant: "destructive",
-      });
-    },
-  });
-  const handleBidSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    mutation.mutate();
-    setIsBidModalOpen(false);
-    window.location.reload();
+
+  const handleApplyClick = () => {
+    if (userDetails[0].role === "client") {
+      setIsAlertOpen(true);
+    }
   };
+
   const { data, isLoading } = useQuery<Job[]>({
     queryKey: ["jobs"],
     queryFn: async () => {
@@ -103,13 +79,7 @@ export default function JobDetailsPage({
       return result as Job[];
     },
   });
-  const handleApplyClick = () => {
-    if (userDetails[0].role === "client") {
-      setIsAlertOpen(true);
-    } else {
-      setIsBidModalOpen(true);
-    }
-  };
+
   const { data: bids, isLoading: isLoadingBids } = useQuery<Bid[]>({
     queryKey: ["bids"],
     queryFn: async () => {
@@ -117,6 +87,7 @@ export default function JobDetailsPage({
       return result as Bid[];
     },
   });
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -124,6 +95,7 @@ export default function JobDetailsPage({
       </div>
     );
   }
+
   return (
     <div className="min-h-screen bg-background py-12 px-4">
       <div className="container mx-auto">
@@ -226,41 +198,6 @@ export default function JobDetailsPage({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      <Dialog open={isBidModalOpen} onOpenChange={setIsBidModalOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Submit Your Bid</DialogTitle>
-            <DialogDescription>
-              Please enter your bid amount for this job. Only numbers are
-              allowed.
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleBidSubmit}>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="bid-amount" className="text-right">
-                  Bid Amount ($)
-                </Label>
-                <Input
-                  id="bid-amount"
-                  type="number"
-                  value={bidAmount}
-                  onChange={(e) => setBidAmount(e.target.value)}
-                  className="col-span-3"
-                  placeholder="Enter your bid amount"
-                  min="1"
-                  step="1"
-                  required
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button type="submit">Submit Bid</Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
