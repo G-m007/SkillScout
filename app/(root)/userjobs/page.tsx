@@ -71,7 +71,7 @@ export default function UserJobsPage() {
                       className="text-xs px-3 py-1"
                       variant={
                         job.status === "accepted"
-                          ? "success"
+                          ? "secondary"
                           : job.status === "rejected"
                           ? "destructive"
                           : "default"

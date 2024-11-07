@@ -54,6 +54,9 @@ interface CandidateWithSkills {
   f_name: string;
   l_name: string;
   email: string;
+  phone_number: string;
+  date_of_birth: string;
+  location: string;
   skills: string[];
 }
 
@@ -62,37 +65,48 @@ interface ResumeUploadResponse {
   message: string;
 }
 
+// Update the interface to match all required parameters
+interface UpdateCandidateParams {
+  candidateId: number;
+  firstName: string;
+  lastName: string;
+  phone_number: string;
+  date_of_birth: string;
+  location: string;
+  skills: string[];
+}
+
 export default function ProfilePage() {
   const { toast } = useToast();
-  const [userData, setUserData] = useState<CandidateWithSkills>();
+  const [userData, setUserData] = useState<CandidateWithSkills | undefined>();
   const [isEditing, setIsEditing] = useState(false);
-  const [selectedSkill, setSelectedSkill] = useState("");
+  const [selectedSkill, setSelectedSkill] = useState<string>("");
   const { user } = useUser();
   const { data, isLoading } = useQuery({
     queryKey: ["user"],
     queryFn: async () => {
-      const result = await getUserDetails(
-        user?.emailAddresses[0].emailAddress as string
-      );
+      if (!user?.emailAddresses[0]?.emailAddress) return null;
+      const result = await getUserDetails(user.emailAddresses[0].emailAddress);
       return result;
     },
-    enabled: !!user?.emailAddresses[0].emailAddress,
+    enabled: !!user?.emailAddresses[0]?.emailAddress,
   });
   const { data: userdata, isLoading: userdataLoading } = useQuery({
     queryKey: ["userdata"],
     queryFn: async () => {
-      const result = await getCandidateWithSkills(data?.[0].candidate_id);
-      setUserData(result[0]);
-      return result[0];
+      if (!data?.[0]?.candidate_id) return null;
+      const result = await getCandidateWithSkills(data[0].candidate_id);
+      if (result?.[0]) setUserData(result[0] as CandidateWithSkills);
+      return result?.[0];
     },
-    enabled: !!data?.[0].candidate_id,
+    enabled: !!data?.[0]?.candidate_id,
   });
   const queryClient = useQueryClient();
   const [isUploading, setIsUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const updateUserMutation = useMutation({
-    mutationFn: updateCandidateDetails,
+    mutationFn: (params: UpdateCandidateParams) => updateCandidateDetails(params),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["userdata"] });
       toast({
@@ -101,7 +115,7 @@ export default function ProfilePage() {
       });
       setIsEditing(false);
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       toast({
         title: "Failed to update profile",
         variant: "destructive",
@@ -111,7 +125,7 @@ export default function ProfilePage() {
   });
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setUserData((prev) => (prev ? { ...prev, [name]: value } : undefined));
+    setUserData((prev) => prev ? { ...prev, [name]: value } : undefined);
   };
 
   const handleAddSkill = () => {
@@ -134,16 +148,17 @@ export default function ProfilePage() {
   };
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (userData) {
-      updateUserMutation.mutate({
-        candidateId: userData.candidate_id,
-        firstName: userData.f_name,
-        lastName: userData.l_name,
-        skills: userData.skills,
-      });
-    }
-    console.log("Updating profile:", userData);
-    setIsEditing(false);
+    if (!userData) return;
+
+    updateUserMutation.mutate({
+      candidateId: userData.candidate_id,
+      firstName: userData.f_name,
+      lastName: userData.l_name,
+      phone_number: userData.phone_number,
+      date_of_birth: userData.date_of_birth,
+      location: userData.location,
+      skills: userData.skills,
+    });
   };
 
   const uploadResumeMutation = useMutation({
@@ -152,6 +167,9 @@ export default function ProfilePage() {
         method: 'POST',
         body: formData,
       });
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
       return response.json();
     },
     onSuccess: () => {
@@ -161,7 +179,7 @@ export default function ProfilePage() {
       });
       setSelectedFile(null);
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       toast({
         title: "Failed to upload resume",
         description: "Please try again later",
@@ -174,7 +192,7 @@ export default function ProfilePage() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+      if (file.size > 5 * 1024 * 1024) {
         toast({
           title: "File too large",
           description: "Please upload a file smaller than 5MB",
@@ -187,7 +205,7 @@ export default function ProfilePage() {
   };
 
   const handleUpload = async () => {
-    if (!selectedFile || !userData) return;
+    if (!selectedFile || !userData?.candidate_id) return;
 
     const formData = new FormData();
     formData.append('resume', selectedFile);
@@ -216,11 +234,21 @@ export default function ProfilePage() {
           <form onSubmit={handleSubmit}>
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Name</Label>
+                <Label htmlFor="f_name">First Name</Label>
                 <Input
-                  id="name"
-                  name="name"
+                  id="f_name"
+                  name="f_name"
                   value={userData?.f_name}
+                  onChange={handleInputChange}
+                  disabled={!isEditing}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="l_name">Last Name</Label>
+                <Input
+                  id="l_name"
+                  name="l_name"
+                  value={userData?.l_name}
                   onChange={handleInputChange}
                   disabled={!isEditing}
                 />
