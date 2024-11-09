@@ -17,7 +17,6 @@ export async function getRecruiterDetails(email: string) {
   return response;
 }
 
-
 ///////////////////////////////////////////////////////////
 export async function getDetails() {
   const sql = neon(process.env.NEXT_PUBLIC_DATABASE_URL!);
@@ -48,7 +47,8 @@ export async function getJobDetails(id: string) {
         job.job_title,
         job.location,
         job.experience_required,
-        job.job_id
+        job.job_id,
+        job.min_cgpa
       FROM 
         recruiter
       JOIN 
@@ -72,16 +72,17 @@ export async function createJob(
   location: string,
   deadline: Date,
   recruiterId: number,
-  skills: string[]
+  skills: string[],
+  min_cgpa: number
 ) {
   const sql = neon(process.env.NEXT_PUBLIC_DATABASE_URL!);
   
   try {
     await sql`BEGIN`;
 
-    // Convert the deadline Date to a PostgreSQL date format
     const formattedDeadline = deadline.toISOString().split('T')[0];
 
+    // First insert the job
     const jobResponse = await sql`
       INSERT INTO Job (
         job_title, 
@@ -90,7 +91,8 @@ export async function createJob(
         deadline, 
         recruiter_id,
         status,
-        created_at
+        created_at,
+        min_cgpa
       )
       VALUES (
         ${job_title}, 
@@ -99,18 +101,22 @@ export async function createJob(
         ${formattedDeadline}::date, 
         ${recruiterId}, 
         'open',
-        CURRENT_TIMESTAMP
+        CURRENT_TIMESTAMP,
+        ${min_cgpa}::decimal(3,2)
       )
       RETURNING job_id;
     `;
 
     const jobId = jobResponse[0].job_id;
 
-    for (const skill of skills) {
-      await sql`
-        INSERT INTO requiredskill (job_id, skill_name)
-        VALUES (${jobId}, ${skill})
-      `;
+    // Insert skills using multiple separate queries
+    if (skills && skills.length > 0) {
+      for (const skill of skills) {
+        await sql`
+          INSERT INTO requiredskill (job_id, skill_name)
+          VALUES (${jobId}, ${skill});
+        `;
+      }
     }
 
     await sql`COMMIT`;
@@ -162,35 +168,34 @@ export async function createNewUser(
   companyName?: string,
   phoneNumber?: string,
   dateOfBirth?: string,
-  location?: string
+  location?: string,
+  cgpa?: string
 ) {
   const sql = neon(process.env.NEXT_PUBLIC_DATABASE_URL!);
   
-  // Check if user exists in either table
-  const existingCandidate = await sql`
-    SELECT email FROM Candidate WHERE email = ${email}
-  `;
-  const existingRecruiter = await sql`
-    SELECT email FROM Recruiter WHERE email = ${email}
-  `;
-
-  if (existingCandidate.length > 0 || existingRecruiter.length > 0) {
-    return { error: "User already exists. Please sign in instead." };
-  }
-
-  console.log("Creating new user:", { firstName, lastName, email, userType, skills, companyName });
-
   try {
     await sql`BEGIN`;
 
     if (userType === 'candidate') {
-      // Get the next candidate_id
+      const cgpaNumber = cgpa ? parseFloat(cgpa) : null;
+      if (cgpaNumber !== null && (isNaN(cgpaNumber) || cgpaNumber < 0 || cgpaNumber > 10)) {
+        throw new Error('CGPA must be a number between 0 and 10');
+      }
+
+      const birthDate = new Date(dateOfBirth!);
+      const today = new Date();
+      let age = today.getFullYear() - birthDate.getFullYear();
+      const monthDiff = today.getMonth() - birthDate.getMonth();
+      
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+      }
+
       const lastId = await sql`
         SELECT MAX(candidate_id) as last_id FROM Candidate
       `;
       const nextId = (lastId[0]?.last_id || 0) + 1;
 
-      // Insert into Candidate table
       const candidateResponse = await sql`
         INSERT INTO Candidate (
           candidate_id,
@@ -199,7 +204,9 @@ export async function createNewUser(
           email,
           phone_number,
           date_of_birth,
-          location
+          location,
+          cgpa,
+          age
         )
         VALUES (
           ${nextId},
@@ -208,12 +215,13 @@ export async function createNewUser(
           ${email},
           ${phoneNumber},
           ${dateOfBirth}::date,
-          ${location}
+          ${location},
+          ${cgpaNumber}::decimal(3,2),
+          ${age}
         )
         RETURNING candidate_id;
       `;
 
-      // If skills are provided, insert them
       if (skills && skills.length > 0) {
         for (const skill of skills) {
           await sql`
@@ -223,24 +231,20 @@ export async function createNewUser(
         }
       }
 
-      console.log("Candidate created successfully:", candidateResponse);
       return { userId: nextId, type: 'candidate' };
 
     } else {
-      // Get the next recruiter_id
       const lastId = await sql`
         SELECT MAX(recruiter_id) as last_id FROM Recruiter
       `;
       const nextId = (lastId[0]?.last_id || 0) + 1;
 
-      // Insert into Recruiter table with company name
       const recruiterResponse = await sql`
         INSERT INTO Recruiter (recruiter_id, f_name, l_name, email, company_name)
         VALUES (${nextId}, ${firstName}, ${lastName}, ${email}, ${companyName})
         RETURNING recruiter_id;
       `;
 
-      console.log("Recruiter created successfully:", recruiterResponse);
       return { userId: nextId, type: 'recruiter' };
     }
 
@@ -253,11 +257,16 @@ export async function createNewUser(
 
 export async function createJobApplication(
   jobId: number,
-  candidateId: number,
+  candidateId: number | null,
   recruiterId: number
 ) {
   try {
     const sql = neon(process.env.NEXT_PUBLIC_DATABASE_URL!);
+    
+    // Check if candidateId is null or undefined
+    if (!candidateId) {
+      return { error: "You must complete your candidate profile before applying" };
+    }
     
     // Check if application already exists
     const existingApplication = await sql`
@@ -286,12 +295,13 @@ export async function createJobApplication(
       )
       RETURNING application_id;
     `;
-    return response;
+    return { success: true, applicationId: response[0].application_id };
   } catch (error) {
     console.error('Error creating job application:', error);
     throw error;
   }
 }
+
 export async function getAppliedJobDetails(candidateId: number) {
   const sql = neon(process.env.NEXT_PUBLIC_DATABASE_URL!);
   const response = await sql`
@@ -332,7 +342,8 @@ export async function getJobApplicationsByJobId(jobId: number) {
         c.email as candidate_email,
         j.job_title,
         j.location,
-        j.experience_required
+        j.experience_required,
+        j.min_cgpa
       FROM 
         Application a
       JOIN 
@@ -354,8 +365,16 @@ export async function getJobApplicationsByJobId(jobId: number) {
 
 export async function getJobDetailsById(recruiterId: number) {
   const sql = neon(process.env.NEXT_PUBLIC_DATABASE_URL!);
-  const response = await sql`SELECT * FROM JOB WHERE RECRUITER_ID = ${recruiterId}`;
-  console.log(response)
+  const response = await sql`
+    SELECT 
+      *,
+      min_cgpa
+    FROM 
+      JOB 
+    WHERE 
+      RECRUITER_ID = ${recruiterId}
+  `;
+  console.log(response);
   return response;
 }
 
@@ -371,6 +390,7 @@ export async function getCandidateWithSkills(candidateId: number) {
       c.phone_number,
       c.date_of_birth,
       c.location,
+      c.cgpa,
       COALESCE(ARRAY_AGG(s.skill_name), '{}') AS skills
     FROM 
       Candidate c
@@ -379,7 +399,8 @@ export async function getCandidateWithSkills(candidateId: number) {
     WHERE 
       c.candidate_id = ${candidateId}
     GROUP BY 
-      c.candidate_id, c.f_name, c.l_name, c.email, c.phone_number, c.date_of_birth, c.location;
+      c.candidate_id, c.f_name, c.l_name, c.email, c.phone_number, 
+      c.date_of_birth, c.location, c.cgpa;
   `;
   return response;
 }
@@ -392,6 +413,7 @@ export async function updateCandidateDetails({
   phone_number,
   date_of_birth,
   location,
+  cgpa,
   skills,
 }: {
   candidateId: number;
@@ -400,12 +422,19 @@ export async function updateCandidateDetails({
   phone_number: string;
   date_of_birth: string;
   location: string;
+  cgpa: string;
   skills: string[];
 }) {
   const sql = neon(process.env.NEXT_PUBLIC_DATABASE_URL!);
   
   try {
     await sql`BEGIN`;
+
+    // Validate CGPA
+    const cgpaNumber = parseFloat(cgpa);
+    if (isNaN(cgpaNumber) || cgpaNumber < 0 || cgpaNumber > 10) {
+      throw new Error('CGPA must be a number between 0 and 10');
+    }
 
     // Update candidate details
     await sql`
@@ -415,7 +444,8 @@ export async function updateCandidateDetails({
         l_name = ${lastName},
         phone_number = ${phone_number},
         date_of_birth = ${date_of_birth}::date,
-        location = ${location}
+        location = ${location},
+        cgpa = ${cgpaNumber}::decimal(3,2)
       WHERE candidate_id = ${candidateId};
     `;
 

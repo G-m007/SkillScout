@@ -56,9 +56,29 @@ export default function JobApplicationPage() {
   })
   const mutation = useMutation({
     mutationFn: async () => {
-      await createJobApplication(selectedJob.job_id, currentUser?.[0]?.candidate_id, selectedJob.recruiter_id)
+      const response = await createJobApplication(selectedJob.job_id, currentUser?.[0]?.candidate_id, selectedJob.recruiter_id);
+      if (response.error) {
+        throw new Error(response.error);
+      }
+      return response;
+    },
+    onSuccess: () => {
+      setIsDialogOpen(false);
+      setIsConfirmed(false);
+      setSelectedJob(null);
+      toast({
+        title: "Success!",
+        description: "Your application has been submitted successfully.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
     }
-  })
+  });
   const handleConfirmApply = async () => {
     if (!isConfirmed) {
       return
@@ -121,7 +141,10 @@ export default function JobApplicationPage() {
                   <span>{jobDetail.experience_required} years experience required</span>
                 </div>
 
-                
+                <div className="flex items-center space-x-2">
+                  <GraduationCap className="w-5 h-5 text-muted-foreground" />
+                  <span>Minimum CGPA: {jobDetail.min_cgpa}</span>
+                </div>
 
                 <div className="flex justify-end pt-4">
                   <Button 

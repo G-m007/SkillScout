@@ -39,7 +39,7 @@ import { SelectItem } from "@/components/ui/select";
 import { useUser } from "@clerk/nextjs";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Job, User } from "@/types";
-import { createJob, getJobs, getRecruiterDetails, getUserDetails } from "@/server";
+import { createJob, getRecruiterDetails, getUserDetails } from "@/server";
 import { useToast } from "@/hooks/use-toast";
 
 const formSchema = z.object({
@@ -57,6 +57,9 @@ const formSchema = z.object({
   }),
   skills: z.array(z.string()).min(1, {
     message: "At least one skill is required.",
+  }),
+  min_cgpa: z.coerce.number().min(0).max(10, {
+    message: "CGPA must be between 0 and 10.",
   }),
 });
 
@@ -90,6 +93,7 @@ export default function PostJobPage() {
       experience_required: 0,
       location: "",
       skills: [],
+      min_cgpa: 0,
     },
   });
   const { toast } = useToast();
@@ -112,7 +116,8 @@ export default function PostJobPage() {
         values.location,
         values.deadline,
         data?.[0].recruiter_id as number,
-        values.skills
+        values.skills,
+        values.min_cgpa
       );
       return result;
     },
@@ -279,6 +284,29 @@ export default function PostJobPage() {
                         ))}
                       </div>
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="min_cgpa"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Minimum CGPA Required</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max="10"
+                        placeholder="Enter minimum CGPA required"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Enter the minimum CGPA requirement for this position (0-10)
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}

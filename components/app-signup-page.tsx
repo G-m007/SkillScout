@@ -61,12 +61,14 @@ const signUpSchema = z.object({
   location: z.string().min(2, "Location must be at least 2 characters").optional(),
   skills: z.array(z.string()).default([]),
   companyName: z.string().default(""),
+  cgpa: z.string().optional(),
 }).refine((data) => {
   if (data.userType === "candidate") {
     return data.skills.length > 0 && 
            data.phoneNumber && 
            data.dateOfBirth && 
-           data.location;
+           data.location &&
+           data.cgpa;
   }
   return true;
 }, {
@@ -96,6 +98,7 @@ export function SignUp() {
       location: "",
       skills: [],
       companyName: "",
+      cgpa: "",
     },
   });
 
@@ -161,7 +164,8 @@ export function SignUp() {
         formData.userType === "recruiter" ? formData.companyName : undefined,
         formData.phoneNumber,
         formData.dateOfBirth,
-        formData.location
+        formData.location,
+        formData.cgpa
       );
       return result;
     },
@@ -392,6 +396,27 @@ export function SignUp() {
                             </div>
                           ))}
                         </div>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="cgpa"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>CGPA*</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            step="0.01"
+                            min="0"
+                            max="10"
+                            placeholder="Enter your CGPA" 
+                            {...field} 
+                          />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}

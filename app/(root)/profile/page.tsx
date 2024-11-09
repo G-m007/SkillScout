@@ -57,6 +57,7 @@ interface CandidateWithSkills {
   phone_number: string;
   date_of_birth: string;
   location: string;
+  cgpa: string;
   skills: string[];
 }
 
@@ -73,6 +74,7 @@ interface UpdateCandidateParams {
   phone_number: string;
   date_of_birth: string;
   location: string;
+  cgpa: string;
   skills: string[];
 }
 
@@ -157,6 +159,7 @@ export default function ProfilePage() {
       phone_number: userData.phone_number,
       date_of_birth: userData.date_of_birth,
       location: userData.location,
+      cgpa: userData.cgpa,
       skills: userData.skills,
     });
   };
@@ -251,6 +254,21 @@ export default function ProfilePage() {
                   value={userData?.l_name}
                   onChange={handleInputChange}
                   disabled={!isEditing}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="cgpa">CGPA</Label>
+                <Input
+                  id="cgpa"
+                  name="cgpa"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  max="10"
+                  value={userData?.cgpa || ''}
+                  onChange={handleInputChange}
+                  disabled={!isEditing}
+                  placeholder="Enter your CGPA (0-10)"
                 />
               </div>
               <div className="space-y-2">
