@@ -2,35 +2,6 @@
 import { neon } from "@neondatabase/serverless";
 import { revalidatePath } from "next/cache";
 
-export async function getJobs() {
-  const sql = neon(process.env.NEXT_PUBLIC_DATABASE_URL!);
-  const response =
-    await sql`SELECT j.job_id, j.title, j.description, j.status, j.budget, j.deadline, u.name AS client_name, array_agg(sr.skill_name) AS skills_required
-		FROM Jobs j
-		JOIN Users u ON j.client_id = u.user_id
-		LEFT JOIN SkillsRequired sr ON j.job_id = sr.job_id
-		GROUP BY j.job_id, u.name
-		ORDER BY j.job_id;`;
-  return response;
-}
-
-export async function getJobById(jobId: number) {
-  const sql = neon(process.env.NEXT_PUBLIC_DATABASE_URL!);
-  const response = await sql`SELECT 
-    Bids.bid_id,
-    Users.name AS freelancer_name,
-    Bids.bid_amount,
-    Bids.status,
-    Bids.created_at
-FROM 
-    Bids
-JOIN 
-    Users ON Bids.freelancer_id = Users.user_id
-WHERE 
-    Bids.job_id = ${jobId};
-`;
-  return response;
-}
 
 export async function getUserDetails(email: string) {
   const sql = neon(process.env.NEXT_PUBLIC_DATABASE_URL!);
@@ -46,87 +17,7 @@ export async function getRecruiterDetails(email: string) {
   return response;
 }
 
-export async function getUserWithSkills(userId: number) {
-  const sql = neon(process.env.NEXT_PUBLIC_DATABASE_URL!);
-  const response = await sql`SELECT 
-    Users.user_id,
-    Users.name,
-    Users.email,
-    Users.role,
-    Users.rating,
-    Users.created_at,
-    COALESCE(ARRAY_AGG(Skills.skill_name), '{}') AS skills
-FROM 
-    Users
-LEFT JOIN 
-    Skills ON Users.user_id = Skills.user_id
-WHERE 
-    Users.user_id = ${userId}
-GROUP BY 
-    Users.user_id;`;
-  console.log("User with skills:", response);
-  return response;
-}
 
-
-export async function getUserPostedJobs(userId: number) {
-  const sql = neon(process.env.NEXT_PUBLIC_DATABASE_URL!);
-  const response = await sql`
-    SELECT 
-    j.job_id,
-    j.title,
-    j.description,
-    j.budget,
-    j.deadline,
-    j.status AS job_status,
-    json_agg(
-        json_build_object(
-            'bid_id', b.bid_id,
-            'freelancer_id', b.freelancer_id,
-            'freelancer_name', u.name,
-            'bid_amount', b.bid_amount,
-            'status', b.status
-        )
-    ) AS bids
-FROM Jobs j
-LEFT JOIN Bids b ON j.job_id = b.job_id
-LEFT JOIN Users u ON b.freelancer_id = u.user_id
-WHERE j.client_id = ${userId}
-GROUP BY j.job_id;
-  `;
-  console.log("User posted jobs:", response);
-  return response;
-}
-
-export async function updateUserDetails({
-  userId,
-  name,
-  skills,
-}: {
-  userId: number;
-  name: string;
-  skills: string[];
-}) {
-  const sql = neon(process.env.NEXT_PUBLIC_DATABASE_URL!);
-  const response = await sql`
-      UPDATE Users
-      SET name = ${name}
-      WHERE user_id = ${userId};
-    `;
-  console.log("User updated:", response);
-  const deleteSkills = await sql`
-      DELETE FROM Skills
-      WHERE user_id = ${userId};
-    `;
-  for (const skill of skills) {
-    await sql`
-        INSERT INTO Skills (user_id, skill_name)
-        VALUES (${userId}, ${skill});
-      `;
-  }
-
-  return deleteSkills;
-}
 ///////////////////////////////////////////////////////////
 export async function getDetails() {
   const sql = neon(process.env.NEXT_PUBLIC_DATABASE_URL!);
