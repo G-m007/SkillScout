@@ -15,9 +15,11 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { MapPin, Calendar, Briefcase } from 'lucide-react';
 import { Button } from "@/components/ui/button";
+import { useRouter } from "next/navigation";
 
 export default function UserJobsPage() {
   const { user } = useUser();
+  const router = useRouter();
   const { data: userDetails, isLoading: userLoading } = useQuery({
     queryKey: ["user"],
     queryFn: async () => {
@@ -118,7 +120,10 @@ export default function UserJobsPage() {
             <p className="text-muted-foreground max-w-sm mx-auto mb-6">
               You haven't applied to any jobs yet. Start exploring opportunities!
             </p>
-            <Button>
+            <Button 
+              onClick={() => router.push('/jobs')}
+              className="bg-primary hover:bg-primary/90"
+            >
               Browse Jobs
             </Button>
           </div>

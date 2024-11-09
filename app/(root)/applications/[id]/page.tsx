@@ -94,13 +94,22 @@ export default function ApplicationsPage() {
             <h1 className="text-3xl font-bold text-white">Applications</h1>
             <p className="text-gray-400 mt-2">Manage your job applications</p>
           </div>
-          <Button 
-            onClick={() => router.back()} 
-            variant="outline"
-            className="w-full sm:w-auto flex items-center gap-2 hover:bg-gray-800 text-white border-gray-700"
-          >
-            ← Back to View Jobs
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+            <Button 
+              onClick={() => router.push(`/recommendations/${id}`)}
+              variant="default"
+              className="w-full sm:w-auto flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              Show Recommended Candidates
+            </Button>
+            <Button 
+              onClick={() => router.back()} 
+              variant="outline"
+              className="w-full sm:w-auto flex items-center gap-2 hover:bg-gray-800 text-white border-gray-700"
+            >
+              ← Back to View Jobs
+            </Button>
+          </div>
         </div>
         
         {applicationData?.length === 0 ? (

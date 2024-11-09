@@ -561,3 +561,175 @@ export async function getResumeByCandidate(candidateId: number) {
     throw error;
   }
 }
+
+// Function to calculate and store recommendations for a job
+export async function generateRecommendations(jobId: number) {
+  const sql = neon(process.env.NEXT_PUBLIC_DATABASE_URL!);
+  
+  try {
+    // First, get job details including required skills
+    const jobDetails = await sql`
+      SELECT 
+        j.*,
+        array_remove(ARRAY_AGG(DISTINCT rs.skill_name), NULL) as required_skills
+      FROM 
+        Job j
+      LEFT JOIN 
+        RequiredSkill rs ON j.job_id = rs.job_id
+      WHERE 
+        j.job_id = ${jobId}
+      GROUP BY 
+        j.job_id
+    `;
+
+    if (!jobDetails[0]) {
+      throw new Error('Job not found');
+    }
+
+    const job = jobDetails[0];
+
+    // Get candidates with their experience_years
+    const candidates = await sql`
+      SELECT 
+        c.*,
+        array_remove(ARRAY_AGG(DISTINCT s.skill_name), NULL) as skills
+      FROM 
+        Candidate c
+      JOIN 
+        Application a ON c.candidate_id = a.candidate_id
+      LEFT JOIN 
+        Skill s ON c.candidate_id = s.candidate_id
+      WHERE 
+        a.job_id = ${jobId}
+      GROUP BY 
+        c.candidate_id
+    `;
+
+    // Delete existing recommendations
+    await sql`DELETE FROM Recommendation WHERE job_id = ${jobId}`;
+
+    // Calculate and store recommendations for each candidate
+    for (const candidate of candidates) {
+      const skillMatchScore = calculateSkillMatch(candidate.skills || [], job.required_skills || []);
+      const locationMatchScore = calculateLocationMatch(candidate.location, job.location);
+      
+      // Use experience_years from candidate and experience_required from job
+      const experienceMatchScore = calculateExperienceMatch(
+        candidate.experience_years || 0,
+        parseInt(job.experience_required) || 0
+      );
+      
+      const cgpaMatchScore = candidate.cgpa >= job.min_cgpa ? 100 : (candidate.cgpa / job.min_cgpa) * 100;
+
+      const overallMatchScore = (
+        (skillMatchScore * 0.4) +
+        (locationMatchScore * 0.2) +
+        (experienceMatchScore * 0.2) +
+        (cgpaMatchScore * 0.2)
+      );
+
+      await sql`
+        INSERT INTO Recommendation (
+          job_id,
+          candidate_id,
+          match_score,
+          skill_match_score,
+          location_match_score,
+          experience_match_score,
+          cgpa_match_score
+        ) VALUES (
+          ${jobId},
+          ${candidate.candidate_id},
+          ${overallMatchScore},
+          ${skillMatchScore},
+          ${locationMatchScore},
+          ${experienceMatchScore},
+          ${cgpaMatchScore}
+        )
+      `;
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error generating recommendations:', error);
+    throw error;
+  }
+}
+
+// Function to get recommendations for a job
+export async function getRecommendations(jobId: number) {
+  const sql = neon(process.env.NEXT_PUBLIC_DATABASE_URL!);
+  
+  try {
+    await generateRecommendations(jobId);
+
+    const recommendations = await sql`
+      SELECT 
+        r.*,
+        c.f_name,
+        c.l_name,
+        c.email,
+        c.location,
+        c.cgpa,
+        c.experience_years,
+        array_remove(ARRAY_AGG(DISTINCT s.skill_name), NULL) as skills
+      FROM 
+        Recommendation r
+      JOIN 
+        Candidate c ON r.candidate_id = c.candidate_id
+      JOIN 
+        Application a ON c.candidate_id = a.candidate_id AND a.job_id = r.job_id
+      LEFT JOIN 
+        Skill s ON c.candidate_id = s.candidate_id
+      WHERE 
+        r.job_id = ${jobId}
+      GROUP BY 
+        r.recommendation_id,
+        r.job_id,
+        r.candidate_id,
+        r.match_score,
+        r.skill_match_score,
+        r.location_match_score,
+        r.experience_match_score,
+        r.cgpa_match_score,
+        r.created_at,
+        c.f_name,
+        c.l_name,
+        c.email,
+        c.location,
+        c.cgpa,
+        c.experience_years
+      ORDER BY 
+        r.match_score DESC
+    `;
+
+    return recommendations;
+  } catch (error) {
+    console.error('Error fetching recommendations:', error);
+    throw error;
+  }
+}
+
+// Helper functions for score calculations
+function calculateSkillMatch(candidateSkills: string[], requiredSkills: string[]): number {
+  if (requiredSkills.length === 0) return 100;
+  const matchedSkills = candidateSkills.filter(skill => 
+    requiredSkills.some(req => req.toLowerCase() === skill.toLowerCase())
+  );
+  return (matchedSkills.length / requiredSkills.length) * 100;
+}
+
+function calculateLocationMatch(candidateLocation: string | null, jobLocation: string): number {
+  if (!candidateLocation) return 0;
+  return candidateLocation.toLowerCase() === jobLocation.toLowerCase() ? 100 : 0;
+}
+
+function calculateExperienceMatch(candidateExp: number, requiredExp: number): number {
+  if (requiredExp === 0) return 100;
+  return candidateExp >= requiredExp ? 100 : (candidateExp / requiredExp) * 100;
+}
+
+function calculateCGPAMatch(candidateCGPA: number, minCGPA: number): number {
+  if (minCGPA === 0) return 100;
+  return candidateCGPA >= minCGPA ? 100 : (candidateCGPA / minCGPA) * 100;
+}
