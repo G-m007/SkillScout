@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, X, Upload, PlusCircle, FileText, Download } from "lucide-react";
+import { Loader2, X, Upload, PlusCircle, FileText, Download, ScrollText, MapPin, Phone, Mail, Calendar, GraduationCap } from "lucide-react";
 import React from "react";
 import { useUser } from "@clerk/nextjs";
 import { useQuery } from "@tanstack/react-query";
@@ -411,141 +411,213 @@ export default function ProfilePage() {
           </div>
         </div>
       ) : (
-        <Card className="max-w-2xl mx-auto">
-          <CardHeader>
-            <CardTitle>Your Profile</CardTitle>
-            <CardDescription>
-              View and edit your profile information (ID: {userData?.candidate_id})
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit}>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="f_name">First Name</Label>
-                  <Input
-                    id="f_name"
-                    name="f_name"
-                    value={userData?.f_name}
-                    onChange={handleInputChange}
-                    disabled={!isEditing}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="l_name">Last Name</Label>
-                  <Input
-                    id="l_name"
-                    name="l_name"
-                    value={userData?.l_name}
-                    onChange={handleInputChange}
-                    disabled={!isEditing}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="cgpa">CGPA</Label>
-                  <Input
-                    id="cgpa"
-                    name="cgpa"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    max="10"
-                    value={userData?.cgpa || ''}
-                    onChange={handleInputChange}
-                    disabled={!isEditing}
-                    placeholder="Enter your CGPA (0-10)"
-                    className="w-full"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="skills">Skills</Label>
-                  <div className="flex flex-wrap gap-2 mb-2">
-                    {userData?.skills.map((skill) => (
-                      <Badge key={skill} variant="secondary" className="text-sm">
-                        {skill}
-                        {isEditing && (
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveSkill(skill)}
-                            className="ml-1 text-muted-foreground hover:text-foreground"
-                          >
-                            <X size={14} />
-                          </button>
-                        )}
-                      </Badge>
-                    ))}
-                  </div>
-                  {isEditing && (
-                    <div className="flex gap-2">
-                      <Select
-                        value={selectedSkill}
-                        onValueChange={setSelectedSkill}
-                      >
-                        <SelectTrigger className="w-[180px]">
-                          <SelectValue placeholder="Select a skill" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {availableSkills.map((skill) => (
-                            <SelectItem key={skill} value={skill}>
-                              {skill}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Button type="button" onClick={handleAddSkill}>
-                        Add Skill
-                      </Button>
+        <div className="max-w-6xl mx-auto space-y-8">
+          {/* Profile Header Card */}
+          <Card className="border-none shadow-lg">
+            <CardHeader className="pb-4">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+                <div>
+                  <CardTitle className="text-2xl md:text-3xl font-bold">
+                    {userData?.f_name} {userData?.l_name}
+                  </CardTitle>
+                  <CardDescription className="text-lg mt-1 space-y-1">
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Mail className="h-4 w-4" />
+                      <span>{user?.emailAddresses[0]?.emailAddress}</span>
                     </div>
-                  )}
+                    {userData?.phone_number && (
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <Phone className="h-4 w-4" />
+                        <span>{userData.phone_number}</span>
+                      </div>
+                    )}
+                  </CardDescription>
                 </div>
-                <div className="space-y-2">
-                  <Label>Resume</Label>
-                  <Card className="p-4">
-                    <div className="space-y-4">
-                      {/* Current Resume Display */}
-                      {resumeData && (
-                        <div className="flex items-center justify-between p-2 bg-secondary rounded-lg">
-                          <div className="flex items-center gap-2">
-                            <FileText className="h-5 w-5 text-primary" />
-                            <div>
-                              <p className="text-sm font-medium">{resumeData.file_name}</p>
-                              <p className="text-xs text-muted-foreground">
-                                Uploaded on: {new Date(resumeData.uploaded_at).toLocaleDateString()}
-                              </p>
-                            </div>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              const byteCharacters = atob(resumeData.file_data);
-                              const byteNumbers = new Array(byteCharacters.length);
-                              for (let i = 0; i < byteCharacters.length; i++) {
-                                byteNumbers[i] = byteCharacters.charCodeAt(i);
-                              }
-                              const byteArray = new Uint8Array(byteNumbers);
-                              const blob = new Blob([byteArray], { type: resumeData.file_type });
-                              const url = window.URL.createObjectURL(blob);
-                              const a = document.createElement('a');
-                              a.href = url;
-                              a.download = resumeData.file_name;
-                              document.body.appendChild(a);
-                              a.click();
-                              window.URL.revokeObjectURL(url);
-                              document.body.removeChild(a);
-                            }}
-                            className="flex items-center gap-1"
-                          >
-                            <Download className="h-4 w-4" />
-                            Download
-                          </Button>
-                        </div>
-                      )}
+                <div className="mt-4 md:mt-0">
+                  <Button 
+                    variant="destructive" 
+                    onClick={() => signOut()}
+                    className="w-full md:w-auto"
+                  >
+                    Sign Out
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+          </Card>
 
-                      {/* Resume Upload Section */}
-                      <div className="space-y-2">
+          {/* Main Profile Content */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Left Column - Personal Details */}
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <CardTitle className="text-xl font-semibold flex items-center gap-2">
+                  <ScrollText className="h-5 w-5" />
+                  Personal Details
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="f_name">First Name</Label>
+                      <Input
+                        id="f_name"
+                        name="f_name"
+                        value={userData?.f_name}
+                        onChange={handleInputChange}
+                        disabled={!isEditing}
+                        className="bg-background"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="l_name">Last Name</Label>
+                      <Input
+                        id="l_name"
+                        name="l_name"
+                        value={userData?.l_name}
+                        onChange={handleInputChange}
+                        disabled={!isEditing}
+                        className="bg-background"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="location">Location</Label>
+                      <div className="relative">
+                        <MapPin className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="location"
+                          name="location"
+                          value={userData?.location || ''}
+                          onChange={handleInputChange}
+                          disabled={!isEditing}
+                          className="pl-8 bg-background"
+                          placeholder="Your location"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="cgpa">CGPA</Label>
+                      <div className="relative">
+                        <GraduationCap className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="cgpa"
+                          name="cgpa"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          max="10"
+                          value={userData?.cgpa || ''}
+                          onChange={handleInputChange}
+                          disabled={!isEditing}
+                          className="pl-8 bg-background"
+                          placeholder="Enter CGPA (0-10)"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Skills Section */}
+                  <div className="space-y-4">
+                    <Label>Skills</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {userData?.skills.map((skill) => (
+                        <Badge 
+                          key={skill} 
+                          variant="secondary" 
+                          className="text-sm py-1 px-3"
+                        >
+                          {skill}
+                          {isEditing && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveSkill(skill)}
+                              className="ml-2 hover:text-destructive"
+                            >
+                              <X size={14} />
+                            </button>
+                          )}
+                        </Badge>
+                      ))}
+                    </div>
+                    {isEditing && (
+                      <div className="flex gap-2 mt-2">
+                        <Select
+                          value={selectedSkill}
+                          onValueChange={setSelectedSkill}
+                        >
+                          <SelectTrigger className="w-[200px]">
+                            <SelectValue placeholder="Select a skill" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availableSkills.map((skill) => (
+                              <SelectItem key={skill} value={skill}>
+                                {skill}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button 
+                          type="button" 
+                          onClick={handleAddSkill}
+                          variant="outline"
+                        >
+                          Add Skill
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Resume Section */}
+                  <div className="space-y-4">
+                    <Label>Resume</Label>
+                    <Card className="p-4 bg-secondary/20">
+                      <div className="space-y-4">
+                        {resumeData ? (
+                          <div className="flex items-center justify-between p-3 bg-background rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <FileText className="h-8 w-8 text-primary" />
+                              <div>
+                                <p className="font-medium">{resumeData.file_name}</p>
+                                <p className="text-sm text-muted-foreground">
+                                  Updated: {new Date(resumeData.uploaded_at).toLocaleDateString()}
+                                </p>
+                              </div>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                const byteCharacters = atob(resumeData.file_data);
+                                const byteNumbers = new Array(byteCharacters.length);
+                                for (let i = 0; i < byteCharacters.length; i++) {
+                                  byteNumbers[i] = byteCharacters.charCodeAt(i);
+                                }
+                                const byteArray = new Uint8Array(byteNumbers);
+                                const blob = new Blob([byteArray], { type: resumeData.file_type });
+                                const url = window.URL.createObjectURL(blob);
+                                const a = document.createElement('a');
+                                a.href = url;
+                                a.download = resumeData.file_name;
+                                document.body.appendChild(a);
+                                a.click();
+                                window.URL.revokeObjectURL(url);
+                                document.body.removeChild(a);
+                              }}
+                              className="flex items-center gap-2"
+                            >
+                              <Download className="h-4 w-4" />
+                              Download
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="text-center p-4 text-muted-foreground">
+                            No resume uploaded yet
+                          </div>
+                        )}
+
                         {isEditing && (
-                          <>
+                          <div className="space-y-2">
                             <div className="flex items-center gap-4">
                               <Input
                                 type="file"
@@ -572,38 +644,67 @@ export default function ProfilePage() {
                             </div>
                             {selectedFile && (
                               <p className="text-sm text-muted-foreground">
-                                Selected file: {selectedFile.name}
+                                Selected: {selectedFile.name}
                               </p>
                             )}
-                          </>
+                          </div>
                         )}
                       </div>
-                    </div>
-                  </Card>
+                    </Card>
+                  </div>
+                </form>
+              </CardContent>
+              <CardFooter className="flex justify-between pt-6">
+                <div className="flex gap-2">
+                  {isEditing ? (
+                    <>
+                      <Button type="submit" onClick={handleSubmit}>
+                        Save Changes
+                      </Button>
+                      <Button variant="outline" onClick={() => setIsEditing(false)}>
+                        Cancel
+                      </Button>
+                    </>
+                  ) : (
+                    <Button onClick={() => setIsEditing(true)}>
+                      Edit Profile
+                    </Button>
+                  )}
                 </div>
-              </div>
-            </form>
-          </CardContent>
-          <CardFooter className="flex justify-between">
-            <div className="flex gap-2">
-              {isEditing ? (
-                <>
-                  <Button type="submit" onClick={handleSubmit}>
-                    Save Changes
-                  </Button>
-                  <Button variant="outline" onClick={() => setIsEditing(false)}>
-                    Cancel
-                  </Button>
-                </>
-              ) : (
-                <Button onClick={() => setIsEditing(true)}>Edit Profile</Button>
-              )}
+              </CardFooter>
+            </Card>
+
+            {/* Right Column - Stats/Info */}
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Profile Completion</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {/* Add profile completion percentage or stats here */}
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>Basic Info</span>
+                      <span className="text-primary">Complete</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span>Skills</span>
+                      <span className={userData?.skills.length ? "text-primary" : "text-destructive"}>
+                        {userData?.skills.length ? `${userData.skills.length} added` : "None added"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span>Resume</span>
+                      <span className={resumeData ? "text-primary" : "text-destructive"}>
+                        {resumeData ? "Uploaded" : "Not uploaded"}
+                      </span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
-            <Button variant="destructive" onClick={() => signOut()}>
-              Sign Out
-            </Button>
-          </CardFooter>
-        </Card>
+          </div>
+        </div>
       )}
     </div>
   );
