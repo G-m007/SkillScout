@@ -8,13 +8,8 @@ import { motion, AnimatePresence } from "framer-motion";
 
 import { Button } from "@/components/ui/button";
 import { Toggle } from "@/components/ui/toggle";
-import { SignInButton, UserButton } from "@clerk/nextjs";
+import { SignInButton, SignOutButton } from "@clerk/nextjs";
 import { User } from "@clerk/nextjs/server";
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from "@/components/ui/hover-card";
 import { useRouter } from "next/navigation";
 import React from "react";
 export default function ResponsiveNavbar({ user }: { user: User }) {
@@ -71,40 +66,19 @@ export default function ResponsiveNavbar({ user }: { user: User }) {
           >
             {user ? (
               <>
-                <UserButton />
-                <HoverCard>
-                  <HoverCardTrigger asChild>
-                    <Button variant="ghost">
-                      Welcome,{" "}
-                      {user.emailAddresses[0].emailAddress.split("@")[0]}
-                    </Button>
-                  </HoverCardTrigger>
-                  <HoverCardContent className="w-80">
-                    <div className="flex justify-between space-x-4">
-                      <div className="space-y-1">
-                        <h4 className="text-sm font-semibold">Your Profile</h4>
-                        <p className="text-sm">
-                          Click to view and edit your profile information.
-                        </p>
-                        <div className="flex items-center pt-2">
-                          <Button
-                            variant="outline"
-                            onClick={() => router.push("/profile")}
-                          >
-                            Go to Profile
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  </HoverCardContent>
-                </HoverCard>
+                <Button variant="ghost" onClick={() => router.push("/profile")}>
+                  Profile
+                </Button>
+                <SignOutButton>
+                  <Button variant="destructive">Sign Out</Button>
+                </SignOutButton>
               </>
             ) : (
-              <Button className="bg-black hover:bg-black/90 text-primary-foreground transition-colors duration-300">
-                <SignInButton>
-                  <h1 className="text-white dark:text-white">Sign In</h1>
-                </SignInButton>
-              </Button>
+              <SignInButton>
+                <Button variant="secondary" className="bg-white hover:bg-white/90 text-black">
+                  Sign In
+                </Button>
+              </SignInButton>
             )}
             {mounted && (
               <Toggle
@@ -176,9 +150,31 @@ export default function ResponsiveNavbar({ user }: { user: User }) {
               <NavLink href="" mobile>
                 Blogs
               </NavLink>
+              {user && (
+                <NavLink href="/profile" mobile>
+                  Profile
+                </NavLink>
+              )}
             </div>
             <div className="pt-4 pb-3 border-t border-gray-200 dark:border-gray-700">
-              
+              {user ? (
+                <div className="px-5 space-y-2">
+            
+                  <SignOutButton>
+                    <Button className="w-full" variant="destructive">
+                      Sign Out
+                    </Button>
+                  </SignOutButton>
+                </div>
+              ) : (
+                <div className="px-5">
+                  <SignInButton>
+                    <Button variant="secondary" className="w-full bg-white hover:bg-white/90 text-black">
+                      Sign In
+                    </Button>
+                  </SignInButton>
+                </div>
+              )}
             </div>
           </motion.div>
         )}
