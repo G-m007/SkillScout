@@ -27,6 +27,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getUserDetails, getCandidateWithSkills, updateCandidateDetails } from "@/server";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { useClerk } from "@clerk/nextjs";
 
 // Mock available skills (replace with actual skill data in your app)
 const availableSkills = [
@@ -106,6 +107,7 @@ export default function ProfilePage() {
   const queryClient = useQueryClient();
   const [isUploading, setIsUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const { signOut } = useClerk();
 
   const updateUserMutation = useMutation({
     mutationFn: (params: UpdateCandidateParams) => updateCandidateDetails(params),
@@ -347,19 +349,24 @@ export default function ProfilePage() {
             </div>
           </form>
         </CardContent>
-        <CardFooter className="flex flex-row">
-          {isEditing ? (
-            <div className="flex gap-6 justify-between">
-              <Button type="submit" onClick={handleSubmit}>
-                Save Changes
-              </Button>
-              <Button variant="outline" onClick={() => setIsEditing(false)}>
-                Cancel
-              </Button>
-            </div>
-          ) : (
-            <Button onClick={() => setIsEditing(true)}>Edit Profile</Button>
-          )}
+        <CardFooter className="flex justify-between">
+          <div className="flex gap-2">
+            {isEditing ? (
+              <>
+                <Button type="submit" onClick={handleSubmit}>
+                  Save Changes
+                </Button>
+                <Button variant="outline" onClick={() => setIsEditing(false)}>
+                  Cancel
+                </Button>
+              </>
+            ) : (
+              <Button onClick={() => setIsEditing(true)}>Edit Profile</Button>
+            )}
+          </div>
+          <Button variant="destructive" onClick={() => signOut()}>
+            Sign Out
+          </Button>
         </CardFooter>
       </Card>
     </div>
