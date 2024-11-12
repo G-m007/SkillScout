@@ -139,11 +139,19 @@ export default function ApplicationsPage() {
                     <h3 className="text-xl font-semibold text-white">
                       {job?.job_title}
                     </h3>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Calendar className="w-4 h-4 text-gray-400" />
-                      <p className="text-gray-400 text-sm">
-                        Posted: {new Date(job?.created_at).toLocaleDateString()}
-                      </p>
+                    <div className="flex items-center gap-4 mt-1">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="w-4 h-4 text-gray-400" />
+                        <p className="text-gray-400 text-sm">
+                          Posted: {new Date(job?.created_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Calendar className="w-4 h-4 text-gray-400" />
+                        <p className="text-gray-400 text-sm">
+                          Deadline: {new Date(job?.deadline).toLocaleDateString()}
+                        </p>
+                      </div>
                     </div>
                   </div>
                   <div>

@@ -81,6 +81,9 @@ export async function createJob(
     await sql`BEGIN`;
 
     const formattedDeadline = deadline.toISOString().split('T')[0];
+    
+    // Determine initial status based on deadline
+    const initialStatus = new Date(formattedDeadline) < new Date() ? 'closed' : 'open';
 
     // First insert the job
     const jobResponse = await sql`
@@ -100,7 +103,7 @@ export async function createJob(
         ${location}, 
         ${formattedDeadline}::date, 
         ${recruiterId}, 
-        'open',
+        ${initialStatus},
         CURRENT_TIMESTAMP,
         ${min_cgpa}::decimal(3,2)
       )
@@ -109,7 +112,7 @@ export async function createJob(
 
     const jobId = jobResponse[0].job_id;
 
-    // Insert skills using multiple separate queries
+    // Insert skills
     if (skills && skills.length > 0) {
       for (const skill of skills) {
         await sql`
@@ -263,41 +266,70 @@ export async function createJobApplication(
   try {
     const sql = neon(process.env.NEXT_PUBLIC_DATABASE_URL!);
     
-    // Check if candidateId is null or undefined
-    if (!candidateId) {
-      return { error: "You must complete your candidate profile before applying" };
-    }
+    // First, create the stored procedure if it doesn't exist
+    await sql`
+      CREATE OR REPLACE PROCEDURE create_job_application(
+        p_job_id INT,
+        p_candidate_id INT
+      )
+      LANGUAGE plpgsql
+      AS $$
+      DECLARE
+        v_existing_application INT;
+      BEGIN
+        -- Check if candidateId is null
+        IF p_candidate_id IS NULL THEN
+          RAISE EXCEPTION 'You must complete your candidate profile before applying';
+        END IF;
+
+        -- Check for existing application
+        SELECT application_id INTO v_existing_application
+        FROM Application 
+        WHERE job_id = p_job_id AND candidate_id = p_candidate_id;
+
+        IF v_existing_application IS NOT NULL THEN
+          RAISE EXCEPTION 'You have already applied to this job';
+        END IF;
+
+        -- Create new application
+        INSERT INTO Application (
+          job_id,
+          candidate_id,
+          application_date,
+          status
+        )
+        VALUES (
+          p_job_id,
+          p_candidate_id,
+          CURRENT_TIMESTAMP,
+          'pending'
+        );
+      END;
+      $$;
+    `;
+
+    // Call the stored procedure
+    await sql`CALL create_job_application(${jobId}, ${candidateId})`;
     
-    // Check if application already exists
-    const existingApplication = await sql`
+    // Get the created application ID
+    const newApplication = await sql`
       SELECT application_id 
       FROM Application 
       WHERE job_id = ${jobId} AND candidate_id = ${candidateId}
+      ORDER BY application_date DESC 
+      LIMIT 1
     `;
 
-    if (existingApplication.length > 0) {
+    return { success: true, applicationId: newApplication[0].application_id };
+  } catch (error: any) {
+    console.error('Error creating job application:', error);
+    // Check for specific error messages from the procedure
+    if (error.message.includes('You must complete your candidate profile')) {
+      return { error: "You must complete your candidate profile before applying" };
+    }
+    if (error.message.includes('You have already applied')) {
       return { error: "You have already applied to this job" };
     }
-
-    // If no existing application, create new one
-    const response = await sql`
-      INSERT INTO Application (
-        job_id,
-        candidate_id,
-        application_date,
-        status
-      )
-      VALUES (
-        ${jobId},
-        ${candidateId},
-        CURRENT_TIMESTAMP,
-        'pending'
-      )
-      RETURNING application_id;
-    `;
-    return { success: true, applicationId: response[0].application_id };
-  } catch (error) {
-    console.error('Error creating job application:', error);
     throw error;
   }
 }
@@ -365,10 +397,15 @@ export async function getJobApplicationsByJobId(jobId: number) {
 
 export async function getJobDetailsById(recruiterId: number) {
   const sql = neon(process.env.NEXT_PUBLIC_DATABASE_URL!);
+  
   const response = await sql`
     SELECT 
       *,
-      min_cgpa
+      min_cgpa,
+      CASE 
+        WHEN deadline < CURRENT_DATE THEN 'closed'
+        ELSE status
+      END as current_status
     FROM 
       JOB 
     WHERE 
