@@ -473,7 +473,7 @@ export async function updateCandidateDetails({
       throw new Error('CGPA must be a number between 0 and 10');
     }
 
-    // Update candidate details
+    // Update candidate details including CGPA
     await sql`
       UPDATE Candidate
       SET 
