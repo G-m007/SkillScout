@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useRouter } from "next/navigation";
@@ -20,6 +19,23 @@ export default function RecruiterPage() {
   if (isLoading) {
     return <div>Loading...</div>;
   }
+
+  const handleApplicationsClick = () => {
+    if (!data?.[0]?.recruiter_id) {
+      alert("You are not authorized to view applications. Please complete your recruiter profile first.");
+      return;
+    }
+    router.push(`/applications?recruiterId=${data[0].recruiter_id}`);
+  };
+
+  const handleCreateJobClick = () => {
+    if (!data?.[0]?.recruiter_id) {
+      alert("You are not authorized to create jobs. Please complete your recruiter profile first.");
+      return;
+    }
+    router.push("/create");
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
@@ -32,7 +48,7 @@ export default function RecruiterPage() {
           {/* Action Buttons */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
             <Button 
-              onClick={() => router.push("/create")} 
+              onClick={handleCreateJobClick}
               variant="outline"
               className="w-full py-6 text-lg hover:scale-105 transition-transform flex items-center justify-center gap-2"
             >
@@ -40,7 +56,7 @@ export default function RecruiterPage() {
               Create a New Job
             </Button>
             <Button 
-              onClick={() => router.push(`/applications?recruiterId=${data?.[0].recruiter_id}`)}
+              onClick={handleApplicationsClick}
               variant="outline"
               className="w-full py-6 text-lg hover:scale-105 transition-transform flex items-center justify-center gap-2"
             >

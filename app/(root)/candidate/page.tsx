@@ -10,30 +10,39 @@ import { PlusCircle, Search, Briefcase } from "lucide-react";
 export default function CandidatePage() {
   const router = useRouter(); // Correct routing hook from next/navigation
 
-  const handleViewJobsClick = () => {
-    router.push("/jobs"); // Navigate to /jobs page
-  };
-
-  const handleYourJobsClick = () => {
-    router.push("/userjobs"); // Navigate to /userjobs page
-  };
-  ////////////////////////////////////////////////////
-  const {data, isLoading} = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ['cand'],
     queryFn: async () => {
       try {
-        const response = getDetails();
-        return response
-        console.log(data)
+        const response = await getDetails();
+        return response;
       } catch (error) {
-        console.log(error)
+        console.log(error);
+        return null;
       }
     }
-  })
+  });
+
+  const handleViewJobsClick = () => {
+    if (!data?.[0]?.candidate_id) {
+      alert("You are not authorized to view jobs. Please complete your candidate profile first.");
+      return;
+    }
+    router.push("/jobs");
+  };
+
+  const handleYourJobsClick = () => {
+    if (!data?.[0]?.candidate_id) {
+      alert("You are not authorized to view your applications. Please complete your candidate profile first.");
+      return;
+    }
+    router.push("/userjobs");
+  };
+
   if (isLoading) {
-    return <Loader2 width={20} height={20} className="object-cover" />
+    return <Loader2 width={20} height={20} className="object-cover" />;
   }
-  /////////////////////////////////////////////
+
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
@@ -86,3 +95,4 @@ export default function CandidatePage() {
 
 
     
+
