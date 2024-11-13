@@ -1,31 +1,41 @@
 "use client";
 
-import { useRouter } from "next/navigation"; // Use next/navigation for routing
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
-import { getDetails } from "@/server";
-import { Loader2 } from "lucide-react";
-import { PlusCircle, Search, Briefcase } from "lucide-react";
+import { getUserDetails } from "@/server";
+import { Loader2, Search, Briefcase, AlertCircle } from "lucide-react";
+import { useUser } from "@clerk/nextjs";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { useState } from "react";
 
 export default function CandidatePage() {
-  const router = useRouter(); // Correct routing hook from next/navigation
+  const router = useRouter();
+  const { user } = useUser();
+  const [showDialog, setShowDialog] = useState(false);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['cand'],
-    queryFn: async () => {
-      try {
-        const response = await getDetails();
-        return response;
-      } catch (error) {
-        console.log(error);
-        return null;
-      }
-    }
+    queryKey: ['getCandidateDetails', user?.emailAddresses[0]?.emailAddress],
+    queryFn: () => getUserDetails(user?.emailAddresses[0]?.emailAddress!),
   });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <Loader2 className="animate-spin w-10 h-10" />
+      </div>
+    );
+  }
 
   const handleViewJobsClick = () => {
     if (!data?.[0]?.candidate_id) {
-      alert("You are not authorized to view jobs. Please complete your candidate profile first.");
+      setShowDialog(true);
       return;
     }
     router.push("/jobs");
@@ -33,18 +43,28 @@ export default function CandidatePage() {
 
   const handleYourJobsClick = () => {
     if (!data?.[0]?.candidate_id) {
-      alert("You are not authorized to view your applications. Please complete your candidate profile first.");
+      setShowDialog(true);
       return;
     }
     router.push("/userjobs");
   };
 
-  if (isLoading) {
-    return <Loader2 width={20} height={20} className="object-cover" />;
-  }
-
   return (
     <div className="min-h-screen bg-background">
+      <Dialog open={showDialog} onOpenChange={setShowDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-destructive" />
+              Access Restricted
+            </DialogTitle>
+            <DialogDescription>
+              You are not authorized to access this page. Please complete your candidate profile first.
+            </DialogDescription>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>
+
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
           {/* Header Section */}
