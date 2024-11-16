@@ -7,5 +7,10 @@
 
 [build.environment]
   NEXT_USE_NETLIFY_EDGE = "true"
-  NODE_VERSION = "18.17.0"  # or your Node.js version
-  NPM_FLAGS = "--legacy-peer-deps"
+  NODE_VERSION = "18.17.0"
+
+# If you need to handle client-side routing
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
