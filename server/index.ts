@@ -42,7 +42,7 @@ export async function getJobDetails(id: string) {
 
     const sql = neon(process.env.NEXT_PUBLIC_DATABASE_URL!);
     const response = await sql`
-      SELECT 
+      SELECT  =
         recruiter.company_name,
         job.job_title,
         job.location,
@@ -769,4 +769,28 @@ function calculateExperienceMatch(candidateExp: number, requiredExp: number): nu
 function calculateCGPAMatch(candidateCGPA: number, minCGPA: number): number {
   if (minCGPA === 0) return 100;
   return candidateCGPA >= minCGPA ? 100 : (candidateCGPA / minCGPA) * 100;
+}
+
+export async function deleteJob(jobId: number) {
+  const sql = neon(process.env.NEXT_PUBLIC_DATABASE_URL!);
+  
+  try {
+    await sql`BEGIN`;
+
+    // Delete related records first due to foreign key constraints
+    await sql`DELETE FROM RequiredSkill WHERE job_id = ${jobId}`;
+    await sql`DELETE FROM Application WHERE job_id = ${jobId}`;
+    await sql`DELETE FROM Recommendation WHERE job_id = ${jobId}`;
+    
+    // Delete the job itself
+    const result = await sql`DELETE FROM Job WHERE job_id = ${jobId} RETURNING *`;
+    
+    await sql`COMMIT`;
+    
+    return { success: true, deletedJob: result[0] };
+  } catch (error) {
+    await sql`ROLLBACK`;
+    console.error('Error deleting job:', error);
+    throw error;
+  }
 }
