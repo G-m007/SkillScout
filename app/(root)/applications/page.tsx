@@ -1,5 +1,6 @@
 'use client';
 export const dynamic = "force-dynamic";
+import { Suspense } from "react";
 import { useEffect, useState } from 'react';
 import { getJobApplicationsByJobId, getRecruiterDetails, getJobDetailsById } from '@/server';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -20,7 +21,15 @@ interface Application {
   candidate_skills: string[];
 }
 
-export default function ApplicationsPage() {
+export default function ApplicationsPageWrapper() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <ApplicationsPage />
+    </Suspense>
+  );
+}
+
+function ApplicationsPage() {
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
