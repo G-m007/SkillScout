@@ -1,4 +1,5 @@
 'use client';
+export const dynamic = "force-dynamic";
 import { useEffect, useState } from 'react';
 import { getJobApplicationsByJobId, getRecruiterDetails, getJobDetailsById } from '@/server';
 import { useRouter, useSearchParams } from 'next/navigation';
