@@ -1,5 +1,7 @@
 SkillScout is a job portal platform designed to bridge the gap between job seekers and employers by streamlining the recruitment process. It features a recommendation system that matches candidates to job opportunities based on their skills, qualifications, and other attributes like CGPA, certifications, and electives. Built using the MERN stack with MySQL as the database, SkillScout emphasizes an efficient backend for managing data, enhanced UI/UX for users, and analytical tools for employers to assess potential candidates effectively.
 
+Developed By Gautham H - PES University
+
 This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
 
 ## Getting Started with SkillScout
